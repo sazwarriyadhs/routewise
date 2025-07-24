@@ -23,15 +23,27 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
 
     reader.onload = () => {
       try {
-        const result = JSON.parse(reader.result as string);
-        if (!result.coordinates || !Array.isArray(result.coordinates)) {
-            throw new Error('Invalid file format. Must have a "coordinates" array.');
+        const data = JSON.parse(reader.result as string);
+        if (
+          !Array.isArray(data) ||
+          !data.every(
+            (item) => typeof item === 'object' && 'lat' in item && 'lon' in item
+          )
+        ) {
+          throw new Error(
+            'Invalid file format. Must be an array of objects with "lat" and "lon" properties.'
+          );
         }
-        onDataLoaded(result);
+
+        const transformedData = {
+          coordinates: data.map((item) => [item.lon, item.lat]),
+        };
+
+        onDataLoaded(transformedData);
       } catch (err: any) {
         toast({
             title: "File Read Error",
-            description: err.message || "Invalid GPS file format. Please use JSON.",
+            description: err.message || "Invalid GPS file format. Please use a valid JSON file.",
             variant: "destructive"
         })
         setFileName(null);
