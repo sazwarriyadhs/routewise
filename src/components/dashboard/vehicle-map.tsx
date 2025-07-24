@@ -119,8 +119,11 @@ export default function VehicleMap({ vehicle, optimizedRoute }: VehicleMapProps)
     const route = optimizedRoute.routes?.[0];
     if (!route?.geometry) return;
 
+    // The geometry from ORS is in EPSG:4326, we need to transform it to EPSG:3857 for the map
+    const routeCoordinates = route.geometry.coordinates.map((coord: [number, number]) => fromLonLat(coord));
+    
     const routeFeature = new Feature({
-        geometry: new LineString(route.geometry).transform('EPSG:4326', 'EPSG:3857'),
+        geometry: new LineString(routeCoordinates),
     });
 
     routeLayer.current.getSource().clear();
