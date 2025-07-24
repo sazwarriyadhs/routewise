@@ -42,12 +42,6 @@ export default function LiveMap({ vehicle }: LiveMapProps) {
       zoom={14}
       scrollWheelZoom={false}
       style={{ height: '100%', width: '100%' }}
-      whenCreated={() => {
-        // This is a workaround for a bug in react-leaflet where the map is not properly sized on initial load.
-        setTimeout(() => {
-          window.dispatchEvent(new Event('resize'));
-        }, 200);
-      }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
