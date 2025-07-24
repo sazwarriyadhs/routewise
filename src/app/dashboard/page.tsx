@@ -144,7 +144,7 @@ export default function DashboardPage() {
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center gap-4 border-b bg-background px-6">
           <h1 className="text-xl font-semibold">
-            {selectedVehicle ? `${selectedVehicle.name} - Real-time` : 'Dashboard'}
+           Real-time Route Optimization
           </h1>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:flex-row md:gap-8">
@@ -156,7 +156,7 @@ export default function DashboardPage() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="details">Vehicle Details</TabsTrigger>
                 <TabsTrigger value="optimize">
-                  <Zap className="mr-2 h-4 w-4" /> Optimize
+                  <Zap className="mr-2 h-4 w-4" /> AI Optimize
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="details">

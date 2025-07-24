@@ -1,16 +1,20 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), { ssr: false });
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // This can be replaced with a proper login form in the future
+    localStorage.setItem('user_authenticated', 'true');
+    router.replace('/dashboard');
+  }, [router]);
+
   return (
-    <main>
-      <h1 className="text-xl font-bold p-4">🚛 Real-time Vehicle Tracking (OpenLayers + Socket)</h1>
-      <div className="w-full h-[calc(100vh-60px)]">
-        <LiveMap />
-      </div>
-    </main>
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+      <p className="text-muted-foreground">Redirecting to dashboard...</p>
+    </div>
   );
 }
