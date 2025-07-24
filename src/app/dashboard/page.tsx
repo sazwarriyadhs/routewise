@@ -27,6 +27,7 @@ import { RouteOptimizer } from '@/components/dashboard/route-optimizer';
 import { optimizeRoute } from '@/ai/flows/optimize-route-flow';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { ReportGenerator } from '@/components/dashboard/report-generator';
 
 
 const socket: Socket = io('http://localhost:3001');
@@ -221,9 +222,10 @@ export default function DashboardPage() {
             </div>
             <div className="col-span-3 h-full">
                 <Tabs defaultValue="details" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="details">Vehicle Details</TabsTrigger>
                         <TabsTrigger value="optimizer">Route Optimizer</TabsTrigger>
+                        <TabsTrigger value="reports">Reports</TabsTrigger>
                     </TabsList>
                     <TabsContent value="details" className="flex-grow">
                         <VehicleDetails vehicle={selectedVehicle} />
@@ -235,6 +237,9 @@ export default function DashboardPage() {
                           optimizedRoute={optimizedRoute}
                           onExport={handleExportPdf}
                         />
+                    </TabsContent>
+                    <TabsContent value="reports" className="flex-grow">
+                        <ReportGenerator />
                     </TabsContent>
                 </Tabs>
             </div>
