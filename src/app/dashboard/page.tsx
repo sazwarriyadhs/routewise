@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Vehicle } from '@/lib/types';
+import type { Vehicle, VehicleMaster } from '@/lib/types';
 import { VehicleDetails } from '@/components/dashboard/vehicle-details';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -28,11 +28,11 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { ReportGenerator } from '@/components/dashboard/report-generator';
 import { GPSUploader } from '@/components/dashboard/gps-uploader';
-import type { Coord } from '@/components/dashboard/simulated-vehicle';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { VehicleManager } from '@/components/dashboard/vehicle-manager';
 
 const socket: Socket = io('http://localhost:3001');
 
@@ -54,66 +54,84 @@ export default function DashboardPage() {
     from: subDays(new Date(), 7),
     to: new Date(),
   });
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  const fetchInitialData = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/location');
+      if (!response.ok) {
+        let errorBody;
+        try {
+            errorBody = await response.json();
+        } catch(e) {
+            errorBody = { message: await response.text() }
+        }
+        throw new Error(errorBody.message || `Failed to fetch initial vehicle locations. Status: ${response.status}`);
+      }
+      const initialVehicles: any[] = await response.json();
+
+      if (!Array.isArray(initialVehicles)) {
+         setInitialLoadingError("Received invalid data from the server. Please check the API.");
+         return;
+      }
+
+      if (initialVehicles.length === 0) {
+        setInitialLoadingError("No vehicles found. Please add a vehicle in the 'Manage Vehicles' tab and then run the simulator.");
+        return;
+      }
+
+      const vehicleMap: Record<string, Vehicle> = {};
+      initialVehicles.forEach(v => {
+          if (!v.id) return;
+          vehicleMap[v.id] = {
+              id: v.id,
+              name: v.name || `Vehicle ${v.id}`,
+              type: v.type || 'Truck',
+              latitude: v.latitude ?? 0,
+              longitude: v.longitude ?? 0,
+              speed: v.speed ?? 0,
+              status: v.status ?? 'Offline',
+              heading: 0, 
+              fuelConsumption: 0,
+              history: [],
+          };
+      });
+      setVehicles(vehicleMap);
+      if (initialVehicles.length > 0 && !selectedVehicleId) {
+          setSelectedVehicleId(initialVehicles[0].id);
+      }
+      setInitialLoadingError(null);
+    } catch (error: any) {
+      console.error("Failed to load initial data", error);
+      setInitialLoadingError(error.message || "Could not connect to the vehicle data service. Please ensure the database is running and accessible.");
+      toast({
+        title: "Error Loading Data",
+        description: "Could not load initial vehicle data. Check the console for more details.",
+        variant: "destructive"
+      })
+    }
+  }, [toast, selectedVehicleId]);
+  
+  React.useEffect(() => {
+    setIsMounted(true);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   React.useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const response = await fetch('/api/location');
-        if (!response.ok) {
-          const errorBody = await response.text();
-          throw new Error(`Failed to fetch initial vehicle locations. Status: ${response.status}. Body: ${errorBody}`);
-        }
-        const initialVehicles: any[] = await response.json();
-
-        if (!Array.isArray(initialVehicles)) {
-           setInitialLoadingError("Received invalid data from the server. Please check the API.");
-           return;
-        }
-
-        if (initialVehicles.length === 0) {
-          setInitialLoadingError("No vehicle data found. Please run the vehicle simulator to populate the database.");
-          return;
-        }
-
-        const vehicleMap: Record<string, Vehicle> = {};
-        initialVehicles.forEach(v => {
-            if (!v.vehicle_id) return;
-            vehicleMap[v.vehicle_id] = {
-                id: v.vehicle_id,
-                name: `Vehicle ${v.vehicle_id}`,
-                latitude: v.latitude,
-                longitude: v.longitude,
-                speed: v.speed,
-                status: v.status,
-                type: 'Truck', // Default value
-                heading: 0, // Default value
-                fuelConsumption: 0, // Default value
-                history: [], // Default value
-            };
-        });
-        setVehicles(vehicleMap);
-        if (initialVehicles.length > 0 && !selectedVehicleId) {
-            setSelectedVehicleId(initialVehicles[0].vehicle_id);
-        }
-        setInitialLoadingError(null);
-      } catch (error: any) {
-        console.error("Failed to load initial data", error);
-        setInitialLoadingError("Could not connect to the vehicle data service. Please ensure the vehicle simulator is running by executing `npm run simulate` in your terminal.");
-        toast({
-          title: "Error Loading Data",
-          description: "Could not load initial vehicle data. Please start the simulator.",
-          variant: "destructive"
-        })
-      }
-    };
-    
-    fetchInitialData();
+    if (!isMounted) return;
 
     socket.on('connect', () => console.log('Dashboard connected to socket server'));
     socket.on('location:update', (data: { vehicle_id: string, latitude: number, longitude: number, speed: number, status: Vehicle['status']}) => {
       setInitialLoadingError(null); // Clear error on first successful update
       setVehicles(prev => {
-        const vehicle = prev[data.vehicle_id] || { id: data.vehicle_id, name: `Vehicle ${data.vehicle_id}` };
+        const vehicle = prev[data.vehicle_id];
+        // If vehicle doesn't exist in state, it might have been added recently
+        if (!vehicle) {
+            // We could fetch the vehicle details here, but for now we'll just ignore the update
+            // to prevent creating vehicles with incomplete data (missing name, type).
+            // The list will be updated on the next full refresh.
+            return prev;
+        }
         const newHistory = [...(vehicle.history || []), [data.longitude, data.latitude]];
         return { 
           ...prev, 
@@ -124,10 +142,6 @@ export default function DashboardPage() {
             speed: data.speed,
             status: data.status,
             history: newHistory,
-            type: vehicle.type || 'Truck',
-            heading: vehicle.heading || 0,
-            fuelConsumption: vehicle.fuelConsumption || 0,
-            name: vehicle.name || `Vehicle ${data.vehicle_id}`,
           } 
         }
       });
@@ -137,9 +151,10 @@ export default function DashboardPage() {
       socket.off('connect');
       socket.off('location:update');
     }
-  }, [toast, selectedVehicleId]);
+  }, [isMounted]);
   
   React.useEffect(() => {
+    if (!isMounted) return;
     const fetchFilteredRoutes = async () => {
         if (!dateRange?.from || !dateRange?.to || !selectedVehicleId) return;
         try {
@@ -162,7 +177,7 @@ export default function DashboardPage() {
         }
     };
     fetchFilteredRoutes();
-  }, [dateRange, toast, selectedVehicleId])
+  }, [dateRange, toast, selectedVehicleId, isMounted])
 
   const selectedVehicle = selectedVehicleId ? vehicles[selectedVehicleId] : null;
 
@@ -295,6 +310,14 @@ export default function DashboardPage() {
       });
   };
 
+  const handleVehicleUpdated = () => {
+    toast({
+        title: "Success",
+        description: "Vehicle list has been updated.",
+    });
+    fetchInitialData();
+  }
+
   return (
     <div className="flex h-screen w-full bg-muted/40 flex-col">
        <header className="flex h-16 items-center justify-between gap-4 border-b bg-background px-6 shrink-0">
@@ -330,6 +353,7 @@ export default function DashboardPage() {
                     vehicles={Object.values(vehicles)}
                     selectedVehicleId={selectedVehicleId}
                     onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
+                    onVehicleUpdated={handleVehicleUpdated}
                 />
             </div>
             <div className="h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
@@ -356,10 +380,11 @@ export default function DashboardPage() {
             </div>
             <div className="h-full">
                 <Tabs defaultValue="details" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="details">Vehicle Details</TabsTrigger>
-                        <TabsTrigger value="optimizer">Route Optimizer</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="details">Details</TabsTrigger>
+                        <TabsTrigger value="optimizer">Optimizer</TabsTrigger>
                         <TabsTrigger value="reports">Reports</TabsTrigger>
+                        <TabsTrigger value="manager">Manage</TabsTrigger>
                     </TabsList>
                     <TabsContent value="details" className="flex-grow overflow-y-auto p-1">
                         <VehicleDetails vehicle={selectedVehicle} />
@@ -376,11 +401,12 @@ export default function DashboardPage() {
                         <ReportGenerator date={dateRange} onDateChange={setDateRange} />
                         <GPSUploader onDataLoaded={handleGpsDataLoaded} />
                     </TabsContent>
+                     <TabsContent value="manager" className="flex-grow overflow-y-auto p-1 space-y-4">
+                        <VehicleManager onVehicleUpdated={handleVehicleUpdated} />
+                    </TabsContent>
                 </Tabs>
             </div>
         </main>
     </div>
   );
 }
-
-    

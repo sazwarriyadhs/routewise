@@ -55,9 +55,12 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const pool = getPool();
+    // Join vehicles and vehicle_locations to get all data
     const { rows } = await pool.query(`
       SELECT 
-        vl.vehicle_id,
+        v.id,
+        v.name,
+        v.type,
         vl.latitude,
         vl.longitude,
         vl.speed,
@@ -70,7 +73,9 @@ export async function GET() {
             END
           ELSE 'Offline'
         END as status
-      FROM vehicle_locations AS vl;
+      FROM vehicles v
+      LEFT JOIN vehicle_locations vl ON v.id = vl.vehicle_id
+      ORDER BY v.id ASC;
     `);
     return NextResponse.json(rows);
   } catch (error: any) {

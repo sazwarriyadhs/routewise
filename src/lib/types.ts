@@ -1,7 +1,14 @@
-export type Vehicle = {
+export type VehicleType = 'Truck' | 'Van' | 'Car';
+
+// Represents the master data for a vehicle
+export type VehicleMaster = {
   id: string;
   name: string;
-  type: 'Truck' | 'Van' | 'Car';
+  type: VehicleType;
+}
+
+// Represents the full vehicle object with live data
+export type Vehicle = VehicleMaster & {
   latitude: number;
   longitude: number;
   speed: number; // in km/h

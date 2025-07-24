@@ -6,8 +6,7 @@
  */
 
 import { io } from 'socket.io-client';
-import { mockVehicles } from './mock-data';
-import type { Vehicle } from './types';
+import type { VehicleMaster } from './types';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
@@ -15,12 +14,20 @@ dotenv.config({ path: '.env' });
 
 const socket = io('http://localhost:3001');
 
-const vehicles: Vehicle[] = JSON.parse(JSON.stringify(mockVehicles));
+// This now represents a vehicle's state during simulation
+interface SimulatedVehicle extends VehicleMaster {
+    latitude: number;
+    longitude: number;
+    speed: number;
+    heading: number;
+    status: 'Moving' | 'Idle' | 'Offline';
+}
+
+let vehicles: SimulatedVehicle[] = [];
 
 const API_BASE_URL = 'http://localhost:9002/api';
 
-
-const updateVehicle = (vehicle: Vehicle): Vehicle => {
+const updateVehicle = (vehicle: SimulatedVehicle): SimulatedVehicle => {
   if (vehicle.status === 'Offline') {
     return vehicle;
   }
@@ -47,10 +54,6 @@ const updateVehicle = (vehicle: Vehicle): Vehicle => {
 
       vehicle.latitude += latChange;
       vehicle.longitude += lonChange;
-
-      vehicle.fuelConsumption = vehicle.type === 'Truck' ? 20 + (vehicle.speed/10) : 8 + (vehicle.speed/10);
-    } else {
-       vehicle.fuelConsumption = 0;
     }
   }
 
@@ -58,16 +61,20 @@ const updateVehicle = (vehicle: Vehicle): Vehicle => {
   return vehicle;
 };
 
-const sendLocationUpdate = async (vehicle: Vehicle) => {
+const sendLocationUpdate = async (vehicle: SimulatedVehicle) => {
     try {
-        await axios.post(`${API_BASE_URL}/location`, {
+        const payload = {
             vehicle_id: vehicle.id,
             latitude: vehicle.latitude,
             longitude: vehicle.longitude,
-            speed: vehicle.speed
-        });
-        socket.emit('location:update', vehicle);
-        console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(4)}, ${vehicle.longitude.toFixed(4)}) Speed: ${vehicle.speed.toFixed(0)}km/h`);
+            speed: vehicle.speed,
+        };
+        await axios.post(`${API_BASE_URL}/location`, payload);
+        
+        // The socket now includes the status
+        socket.emit('location:update', {...payload, status: vehicle.status });
+        
+        console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(4)}, ${vehicle.longitude.toFixed(4)}) Speed: ${vehicle.speed.toFixed(0)}km/h Status: ${vehicle.status}`);
     } catch (error: any) {
         console.error(`❌ Failed to send update for ${vehicle.id}:`, error.response?.data?.message || error.message);
     }
@@ -78,6 +85,7 @@ socket.on('connect', () => {
   console.log('🛰️  Simulator connected to server');
 
   setInterval(() => {
+    if (vehicles.length === 0) return;
     vehicles.forEach(v => {
       const updatedVehicle = updateVehicle(v);
       if (updatedVehicle.status !== 'Offline') {
@@ -92,13 +100,36 @@ socket.on('disconnect', () => {
 });
 
 
-console.log('🚦 Initializing multi-vehicle simulator...');
-(async () => {
+const initializeSimulator = async () => {
     try {
         console.log('Initializing database schema...');
         await axios.post(`${API_BASE_URL}/db/init`);
         console.log('Database schema initialized.');
+
+        console.log('Fetching vehicle list for simulation...');
+        const response = await axios.get(`${API_BASE_URL}/vehicles`);
+        const masterVehicles: VehicleMaster[] = response.data;
+
+        if (masterVehicles.length === 0) {
+            console.warn('⚠️ No vehicles found in the database. Please add vehicles via the dashboard to start the simulation.');
+            return;
+        }
+
+        vehicles = masterVehicles.map(v => ({
+            ...v,
+            latitude: -6.2, // Default start lat
+            longitude: 106.8, // Default start lon
+            speed: Math.random() * 60,
+            heading: Math.random() * 360,
+            status: 'Moving',
+        }));
+
+        console.log(`🚦 Loaded ${vehicles.length} vehicles. Starting simulation...`);
+
     } catch(e: any) {
-        console.error('Could not initialize schema:', e.response?.data?.message || e.message)
+        console.error('❌ Simulator initialization failed:', e.response?.data?.message || e.message)
+        console.error('Please ensure the backend server is running and the database is accessible.');
     }
-})();
+};
+
+initializeSimulator();
