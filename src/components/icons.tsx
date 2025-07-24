@@ -1,7 +1,13 @@
-import { Route } from 'lucide-react';
+import Image from 'next/image';
 
 export const Icons = {
-  Logo: (props: React.SVGProps<SVGSVGElement>) => (
-    <Route {...props} />
+  Logo: (props: { className?: string }) => (
+    <Image
+      src="/logo.png"
+      alt="RouteWise logo"
+      width={24}
+      height={24}
+      className={props.className}
+    />
   ),
 };
