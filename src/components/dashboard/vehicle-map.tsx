@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -37,6 +38,7 @@ export default function VehicleMap({
   const [map, setMap] = useState<Map | null>(null);
   const markerLayerRef = useRef<VectorLayer<any>>(null);
   const routeLayerRef = useRef<VectorLayer<any>>(null);
+  const selectedRouteLayerRef = useRef<VectorLayer<any>>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<Overlay | null>(null);
 
@@ -57,12 +59,25 @@ export default function VehicleMap({
         }),
       });
       (routeLayerRef as React.MutableRefObject<any>).current = routeLayer;
+      
+      const selectedRouteLayer = new VectorLayer({
+        source: new VectorSource(),
+        style: new Style({
+          stroke: new Stroke({
+            color: 'hsl(var(--primary))',
+            width: 5,
+          }),
+        }),
+      });
+      (selectedRouteLayerRef as React.MutableRefObject<any>).current = selectedRouteLayer;
+
 
       const olMap = new Map({
         target: mapRef.current,
         layers: [
           new TileLayer({ source: new OSM() }),
           routeLayer,
+          selectedRouteLayer,
           markerLayer,
         ],
         view: new View({
@@ -163,10 +178,38 @@ export default function VehicleMap({
   }, [vehicles, map, showVehicleType, selectedVehicleId, onSelectVehicle, simulatedGpsData]);
 
   useEffect(() => {
-    if (!map || !selectedVehicleId || simulatedGpsData.length > 0) {
+    if (!map || simulatedGpsData.length > 0) {
         overlayRef.current?.setPosition(undefined);
         return;
     };
+
+    const selectedRouteSource = selectedRouteLayerRef.current?.getSource();
+    if (!selectedRouteSource) return;
+    
+    selectedRouteSource.clear();
+    
+    if (!selectedVehicleId) {
+        return;
+    }
+
+    const fetchRoute = async () => {
+      try {
+        const res = await fetch(`/api/vehicles/logs?vehicle_id=${selectedVehicleId}`);
+        const data = await res.json();
+        if (data && data.length > 1) {
+          const path = data.map((log: any) => fromLonLat([log.longitude, log.latitude]));
+          const routeLine = new Feature({
+            geometry: new LineString(path),
+          });
+          selectedRouteSource.addFeature(routeLine);
+        }
+      } catch (err) {
+        console.error('Failed to load vehicle route:', err);
+      }
+    };
+    fetchRoute();
+
+
     const selected = vehicles.find((v) => v.id === selectedVehicleId);
     if (selected) {
       map.getView().animate({ center: fromLonLat([selected.longitude, selected.latitude]), duration: 500, zoom: 15 });
