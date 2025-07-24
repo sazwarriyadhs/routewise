@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 import type { Vehicle, VehicleMaster } from '@/lib/types';
+import { mockVehicles } from '@/lib/mock-data';
 
 
 export function useVehicles() {
@@ -24,12 +25,19 @@ export function useVehicles() {
       setVehicles(data);
       setError(null);
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || 'An unknown error occurred';
+      setError(errorMessage);
+      
+      // Fallback to mock data if the database is not available.
+      console.warn(`[Fallback] API fetch failed: ${errorMessage}. Loading mock data.`);
+      setVehicles(mockVehicles);
       toast({
-        title: "Error fetching vehicles",
-        description: err.message,
-        variant: 'destructive'
+        title: "Database Connection Failed",
+        description: "Using mock data for demonstration. Please ensure your database server is running.",
+        variant: "destructive",
+        duration: 10000
       })
+
     } finally {
       setLoading(false);
     }

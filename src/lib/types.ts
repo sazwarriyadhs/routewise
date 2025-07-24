@@ -15,7 +15,8 @@ export type Vehicle = VehicleMaster & {
   heading: number; // in degrees
   fuelConsumption: number; // in L/100km
   status: 'Moving' | 'Idle' | 'Offline';
-  history: [number, number][];
+  timestamp: string;
+  history?: [number, number][];
 };
 
 export type OptimizedRouteResult = {
