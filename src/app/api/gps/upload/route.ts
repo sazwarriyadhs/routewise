@@ -69,11 +69,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, count: logs.length }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
         return NextResponse.json({ message: 'Invalid data format.', errors: error.errors }, { status: 400 });
     }
-    console.error('Failed to upload GPS logs:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    console.error('GPS Upload Error:', error.message);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

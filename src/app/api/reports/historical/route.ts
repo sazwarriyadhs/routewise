@@ -43,11 +43,11 @@ export async function GET(request: Request) {
     } finally {
       client.release();
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ message: 'Invalid query parameters. startDate, endDate (ISO strings) are required, and vehicleId is optional.' }, { status: 400 });
     }
-    console.error('Failed to fetch historical data:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    console.error('Historical Data Error:', error.message);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

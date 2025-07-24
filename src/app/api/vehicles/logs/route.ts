@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
       [vehicleId]
     );
     return NextResponse.json(rows);
-  } catch (error) {
-    console.error('Error fetching GPS logs:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Vehicle Logs Error:', error.message);
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

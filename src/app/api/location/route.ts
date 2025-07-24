@@ -46,9 +46,9 @@ export async function POST(request: Request) {
 
 
     return NextResponse.json({ success: true }, { status: 201 });
-  } catch (error) {
-    console.error('Failed to save location:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Location POST Error:', error.message);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -73,8 +73,8 @@ export async function GET() {
       FROM vehicle_locations AS vl;
     `);
     return NextResponse.json(rows);
-  } catch (error) {
-    console.error('Failed to fetch locations:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Location GET Error:', error.message);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

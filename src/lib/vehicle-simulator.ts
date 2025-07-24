@@ -68,8 +68,8 @@ const sendLocationUpdate = async (vehicle: Vehicle) => {
         });
         socket.emit('location:update', vehicle);
         console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(4)}, ${vehicle.longitude.toFixed(4)}) Speed: ${vehicle.speed.toFixed(0)}km/h`);
-    } catch (error) {
-        console.error(`❌ Failed to send update for ${vehicle.id}:`, (error as any).response?.data || (error as any).message);
+    } catch (error: any) {
+        console.error(`❌ Failed to send update for ${vehicle.id}:`, error.response?.data?.message || error.message);
     }
 }
 
@@ -98,7 +98,7 @@ console.log('🚦 Initializing multi-vehicle simulator...');
         console.log('Initializing database schema...');
         await axios.post(`${API_BASE_URL}/db/init`);
         console.log('Database schema initialized.');
-    } catch(e) {
-        // console.error('Could not initialize schema', (e as any).response?.data || (e as any).message)
+    } catch(e: any) {
+        console.error('Could not initialize schema:', e.response?.data?.message || e.message)
     }
 })();

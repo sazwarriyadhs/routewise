@@ -33,8 +33,8 @@ export async function POST() {
     } finally {
       client.release();
     }
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('DB Init Error:', error.message);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

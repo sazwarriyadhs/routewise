@@ -137,7 +137,7 @@ export default function DashboardPage() {
       socket.off('connect');
       socket.off('location:update');
     }
-  }, [toast]);
+  }, [toast, selectedVehicleId]);
   
   React.useEffect(() => {
     const fetchFilteredRoutes = async () => {
@@ -147,12 +147,13 @@ export default function DashboardPage() {
             const toISO = endOfDay(dateRange.to).toISOString();
             const response = await fetch(`/api/reports/historical?startDate=${fromISO}&endDate=${toISO}&vehicleId=${selectedVehicleId}`);
             if(!response.ok) {
-                throw new Error("Failed to fetch filtered routes");
+                const errorBody = await response.json();
+                throw new Error(errorBody.message || "Failed to fetch filtered routes");
             }
             const data = await response.json();
             setFilteredRoutes(data);
-        } catch(e) {
-            console.error("Error fetching filtered routes", e);
+        } catch(e: any) {
+            console.error("Error fetching filtered routes", e.message);
             toast({
                 title: "Error fetching routes",
                 description: "Could not load filtered route data for the map.",
