@@ -1,12 +1,23 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config();
+let pool: Pool;
 
-// Use a default local connection string if DATABASE_URL is not set.
-// This is useful for local development without needing a .env file.
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/route';
+const getPool = () => {
+    if (!pool) {
+        dotenv.config({ path: '.env' });
 
-export const pool = new Pool({
-  connectionString: connectionString,
-});
+        const connectionString = process.env.DATABASE_URL;
+
+        if (!connectionString) {
+            console.warn("DATABASE_URL not found in .env, using default local connection string. This may not work in production.");
+        }
+        
+        pool = new Pool({
+            connectionString: connectionString || 'postgresql://postgres:postgres@localhost:5432/route',
+        });
+    }
+    return pool;
+}
+
+export { getPool as pool };

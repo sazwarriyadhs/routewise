@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool as getPool } from '@/lib/db';
 
 export async function POST() {
   try {
+    const pool = getPool();
     const client = await pool.connect();
     try {
       // Create the vehicle_locations table if it doesn't exist

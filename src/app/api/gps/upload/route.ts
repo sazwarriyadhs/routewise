@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool as getPool } from '@/lib/db';
 import { z } from 'zod';
 
 const gpsLogSchema = z.object({
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'No logs provided.' }, { status: 400 });
     }
 
+    const pool = getPool();
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

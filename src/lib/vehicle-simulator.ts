@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -8,6 +9,9 @@ import { io } from 'socket.io-client';
 import { mockVehicles } from './mock-data';
 import type { Vehicle } from './types';
 import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env' });
 
 const socket = io('http://localhost:3001');
 

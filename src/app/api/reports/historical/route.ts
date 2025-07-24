@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool as getPool } from '@/lib/db';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   try {
     const { startDate, endDate } = schema.parse({ startDate: rawStartDate, endDate: rawEndDate });
-
+    const pool = getPool();
     const client = await pool.connect();
     try {
       const { rows } = await client.query(

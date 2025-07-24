@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool as getPool } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
+    const pool = getPool();
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -54,6 +54,7 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    const pool = getPool();
     const { rows } = await pool.query(`
       SELECT 
         vl.vehicle_id,
