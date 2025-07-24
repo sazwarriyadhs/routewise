@@ -97,6 +97,7 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
                 title: "No Data Available",
                 description: "There is no vehicle data for the selected period.",
             });
+            setIsGenerating(false);
             return;
         }
         
@@ -213,7 +214,7 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
 
   return (
     <>
-      <div style={{ position: 'fixed', left: '-2000px', top: 0 }}>
+      <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1 }}>
         <SpeedChart data={chartData} ref={chartRef} />
       </div>
       <Card className="h-full flex flex-col">
