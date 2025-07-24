@@ -36,4 +36,12 @@ export const getPool = () => {
              console.error("\x1b[32mDATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/route\"\x1b[0m");
              console.error("\nAfter creating/updating the file, you may need to restart the development server.\n\n");
              // Throw an error instead of exiting the process to allow for graceful handling by the framework.
-             throw new Error
+             throw new Error(errorMessage);
+        }
+        
+        pool = new Pool({
+            connectionString: DATABASE_URL,
+        });
+    }
+    return pool;
+};
