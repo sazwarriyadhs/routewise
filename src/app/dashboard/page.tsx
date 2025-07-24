@@ -141,11 +141,11 @@ export default function DashboardPage() {
   
   React.useEffect(() => {
     const fetchFilteredRoutes = async () => {
-        if (!dateRange?.from || !dateRange?.to) return;
+        if (!dateRange?.from || !dateRange?.to || !selectedVehicleId) return;
         try {
             const fromISO = startOfDay(dateRange.from).toISOString();
             const toISO = endOfDay(dateRange.to).toISOString();
-            const response = await fetch(`/api/reports/historical?startDate=${fromISO}&endDate=${toISO}`);
+            const response = await fetch(`/api/reports/historical?startDate=${fromISO}&endDate=${toISO}&vehicleId=${selectedVehicleId}`);
             if(!response.ok) {
                 throw new Error("Failed to fetch filtered routes");
             }
@@ -161,7 +161,7 @@ export default function DashboardPage() {
         }
     };
     fetchFilteredRoutes();
-  }, [dateRange, toast])
+  }, [dateRange, toast, selectedVehicleId])
 
   const selectedVehicle = selectedVehicleId ? vehicles[selectedVehicleId] : null;
 
