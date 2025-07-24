@@ -1,41 +1,21 @@
 import { Pool } from 'pg';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
 
 let pool: Pool;
 
-// Helper to find the .env file
-const findEnvFile = () => {
-    const projectRoot = process.cwd();
-    // Prioritize .env.local if it exists
-    if (fs.existsSync(path.join(projectRoot, '.env.local'))) {
-        return path.join(projectRoot, '.env.local');
-    }
-    if (fs.existsSync(path.join(projectRoot, '.env'))) {
-        return path.join(projectRoot, '.env');
-    }
-    return null;
-}
+// Note: We removed the manual dotenv loading. 
+// Next.js automatically loads variables from .env.local into process.env.
+// This is a cleaner and more standard approach.
 
 export const getPool = () => {
     if (!pool) {
-        const envPath = findEnvFile();
-        if (envPath) {
-            dotenv.config({ path: envPath });
-        } else {
-            console.warn("No .env or .env.local file found. The application may not be able to connect to the database if environment variables are not set elsewhere.");
-        }
-
         const { DATABASE_URL } = process.env;
 
         if (!DATABASE_URL) {
-             const errorMessage = `FATAL: Missing DATABASE_URL environment variable. Please set it in your environment file (e.g., .env or .env.local).`;
+             const errorMessage = `FATAL: Missing DATABASE_URL environment variable. Please ensure it is set in your .env.local file.`;
              console.error("\n\n\x1b[31m" + errorMessage + "\x1b[0m");
              console.error("Example:");
              console.error("\x1b[32mDATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/route\"\x1b[0m");
-             console.error("\nAfter creating/updating the file, you may need to restart the development server.\n\n");
-             // Throw an error instead of exiting the process to allow for graceful handling by the framework.
+             console.error("\nAfter creating/updating the file, you must restart the development server.\n\n");
              throw new Error(errorMessage);
         }
         
