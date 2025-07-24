@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pool as getPool } from '@/lib/db';
+import { getPool } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const vehicleId = req.nextUrl.searchParams.get('vehicle_id');

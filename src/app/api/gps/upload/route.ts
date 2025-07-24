@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { pool as getPool } from '@/lib/db';
+import { getPool } from '@/lib/db';
 import { z } from 'zod';
 
 const gpsLogSchema = z.object({
