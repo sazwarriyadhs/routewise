@@ -148,20 +148,8 @@ export default function DashboardPage() {
           </h1>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:flex-row md:gap-8">
-          <div className="flex-1 rounded-xl border bg-card text-card-foreground shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Map className="h-5 w-5" /> Live Map
-              </CardTitle>
-              <CardDescription>
-                Real-time vehicle locations. The optimized route will be shown here.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                <LiveMap />
-              </div>
-            </CardContent>
+          <div className="flex-1 rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
+            <LiveMap />
           </div>
           <div className="w-full md:w-[400px] lg:w-[450px]">
             <Tabs defaultValue="details" className="h-full">
