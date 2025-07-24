@@ -1,0 +1,21 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { pool } from '@/lib/db';
+
+export async function GET(req: NextRequest) {
+  const vehicleId = req.nextUrl.searchParams.get('vehicle_id');
+
+  if (!vehicleId) {
+    return NextResponse.json({ error: 'vehicle_id is required' }, { status: 400 });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT latitude, longitude, timestamp FROM gps_logs WHERE vehicle_id = $1 ORDER BY timestamp ASC`,
+      [vehicleId]
+    );
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error('Error fetching GPS logs:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
