@@ -65,6 +65,7 @@ export default function DashboardPage() {
                 type: 'Truck', // Default value
                 heading: 0, // Default value
                 fuelConsumption: 0, // Default value
+                history: [], // Default value
             };
         });
         setVehicles(vehicleMap);
@@ -87,6 +88,7 @@ export default function DashboardPage() {
     socket.on('location:update', (data: { vehicle_id: string, latitude: number, longitude: number, speed: number, status: Vehicle['status']}) => {
       setVehicles(prev => {
         const vehicle = prev[data.vehicle_id] || { id: data.vehicle_id, name: `Vehicle ${data.vehicle_id}` };
+        const newHistory = [...(vehicle.history || []), [data.longitude, data.latitude]];
         return { 
           ...prev, 
           [data.vehicle_id]: { 
@@ -95,6 +97,7 @@ export default function DashboardPage() {
             longitude: data.longitude,
             speed: data.speed,
             status: data.status,
+            history: newHistory,
             // Mocking other properties for now
             type: vehicle.type || 'Truck',
             heading: vehicle.heading || 0,
@@ -265,7 +268,12 @@ export default function DashboardPage() {
                 />
             </div>
             <div className="h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
-                <VehicleMap vehicle={selectedVehicle} optimizedRoute={optimizedRoute} />
+                <VehicleMap 
+                  vehicles={Object.values(vehicles)}
+                  selectedVehicleId={selectedVehicleId}
+                  onSelectVehicle={(id) => setSelectedVehicleId(id)}
+                  showVehicleType={['Truck', 'Van', 'Car']}
+                />
             </div>
             <div className="h-full">
                 <Tabs defaultValue="details" className="h-full flex flex-col">

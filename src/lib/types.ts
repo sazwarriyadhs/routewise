@@ -8,6 +8,7 @@ export type Vehicle = {
   heading: number; // in degrees
   fuelConsumption: number; // in L/100km
   status: 'Moving' | 'Idle' | 'Offline';
+  history: [number, number][];
 };
 
 export type OptimizedRouteResult = {

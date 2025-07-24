@@ -1,149 +1,161 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import 'ol/ol.css';
-import Map from 'ol/Map';
-import View from 'ol/View';
-import { fromLonLat } from 'ol/proj';
+import { useEffect, useRef, useState } from 'react';
+import { Map, View } from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
-import { Feature } from 'ol';
+import VectorSource from 'ol/source/Vector';
+import VectorLayer from 'ol/layer/Vector';
+import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import LineString from 'ol/geom/LineString';
-import { Vector as VectorLayer } from 'ol/layer';
-import VectorSource from 'ol/source/Vector';
-import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
+import { fromLonLat } from 'ol/proj';
+import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
 import Overlay from 'ol/Overlay';
+import 'ol/ol.css';
 import type { Vehicle } from '@/lib/types';
 
+
 interface VehicleMapProps {
-  vehicle: Vehicle | null;
-  optimizedRoute?: any;
+  vehicles: Vehicle[];
+  selectedVehicleId: string | null;
+  onSelectVehicle: (id: string) => void;
+  showVehicleType: string[]; // filter by type (e.g. ["Truck"])
 }
 
-export default function VehicleMap({ vehicle, optimizedRoute }: VehicleMapProps) {
+export default function VehicleMap({
+  vehicles,
+  selectedVehicleId,
+  onSelectVehicle,
+  showVehicleType,
+}: VehicleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapObj = useRef<Map | null>(null);
-  const markerLayer = useRef<VectorLayer<any> | null>(null);
-  const routeLayer = useRef<VectorLayer<any> | null>(null);
+  const [map, setMap] = useState<Map | null>(null);
+  const markerLayerRef = useRef<VectorLayer<any>>(null);
+  const routeLayerRef = useRef<VectorLayer<any>>(null);
   const popupRef = useRef<HTMLDivElement>(null);
-  const popupOverlay = useRef<Overlay | null>(null);
+  const overlayRef = useRef<Overlay | null>(null);
 
   useEffect(() => {
-    if (!mapRef.current || mapObj.current) return;
+    if (mapRef.current && !map) {
+      const markerLayer = new VectorLayer({
+        source: new VectorSource(),
+      });
+      (markerLayerRef as React.MutableRefObject<any>).current = markerLayer;
 
-    const baseLayer = new TileLayer({ source: new OSM() });
-    const view = new View({
-      center: fromLonLat([106.8272, -6.1754]), // Default to Jakarta
-      zoom: 5,
-    });
-
-    mapObj.current = new Map({
-      target: mapRef.current,
-      layers: [baseLayer],
-      view,
-    });
-
-    popupOverlay.current = new Overlay({
-      element: popupRef.current!,
-      positioning: 'bottom-center',
-      stopEvent: false,
-      offset: [0, -15],
-    });
-    mapObj.current.addOverlay(popupOverlay.current);
-
-    markerLayer.current = new VectorLayer({
-      source: new VectorSource(),
-    });
-    mapObj.current.addLayer(markerLayer.current);
-
-    routeLayer.current = new VectorLayer({
+      const routeLayer = new VectorLayer({
         source: new VectorSource(),
         style: new Style({
-            stroke: new Stroke({
-                color: 'hsl(var(--accent))',
-                width: 4,
-            }),
+          stroke: new Stroke({
+            color: 'hsl(var(--accent))',
+            width: 3,
+          }),
         }),
-    });
-    mapObj.current.addLayer(routeLayer.current);
+      });
+      (routeLayerRef as React.MutableRefObject<any>).current = routeLayer;
 
+      const olMap = new Map({
+        target: mapRef.current,
+        layers: [
+          new TileLayer({ source: new OSM() }),
+          routeLayer,
+          markerLayer,
+        ],
+        view: new View({
+          center: fromLonLat([106.8272, -6.1754]), // Jakarta default
+          zoom: 12,
+        }),
+      });
 
-    return () => mapObj.current?.setTarget(undefined);
-  }, []);
+      const overlay = new Overlay({
+        element: popupRef.current!,
+        autoPan: true,
+        positioning: 'bottom-center',
+        offset: [0, -20],
+      });
+      olMap.addOverlay(overlay);
+      (overlayRef as React.MutableRefObject<any>).current = overlay;
+
+      setMap(olMap);
+
+      return () => olMap.setTarget(undefined);
+    }
+  }, [map]);
 
   useEffect(() => {
-    if (!vehicle || !markerLayer.current?.getSource() || !mapObj.current || !popupOverlay.current) {
-        markerLayer.current?.getSource().clear();
-        popupOverlay.current?.setPosition(undefined);
+    if (!map || !markerLayerRef.current || !routeLayerRef.current) return;
+
+    const markerSource = markerLayerRef.current.getSource();
+    const routeSource = routeLayerRef.current.getSource();
+    markerSource.clear();
+    routeSource.clear();
+
+    vehicles.forEach((vehicle) => {
+      if (!showVehicleType.includes(vehicle.type)) return;
+
+      const coord = fromLonLat([vehicle.longitude, vehicle.latitude]);
+
+      const marker = new Feature({
+        geometry: new Point(coord),
+        vehicle,
+      });
+      marker.setStyle(
+        new Style({
+            image: new CircleStyle({
+                radius: 8,
+                fill: new Fill({ color: vehicle.id === selectedVehicleId ? 'hsl(var(--primary))' : 'hsl(var(--accent))' }),
+                stroke: new Stroke({ color: '#ffffff', width: 2 }),
+            }),
+        })
+      );
+      markerSource.addFeature(marker);
+
+      if(vehicle.history && vehicle.history.length > 1) {
+        const routeLine = new Feature({
+            geometry: new LineString(vehicle.history.map(fromLonLat)),
+        });
+        routeSource.addFeature(routeLine);
+      }
+    });
+
+    map.on('singleclick', (evt) => {
+      let featureFound = false;
+      map.forEachFeatureAtPixel(evt.pixel, (feature) => {
+        const vehicle = feature.get('vehicle');
+        if (vehicle) {
+          featureFound = true;
+          onSelectVehicle(vehicle.id);
+          const coord = fromLonLat([vehicle.longitude, vehicle.latitude]);
+          overlayRef.current?.setPosition(coord);
+          if (popupRef.current)
+            popupRef.current.innerHTML = `
+              <div class="bg-card text-card-foreground p-2 text-sm shadow rounded-md border border-border">
+                <strong>${vehicle.name}</strong><br/>
+                Status: ${vehicle.status}<br/>
+                Speed: ${vehicle.speed} km/h
+              </div>
+            `;
+        }
+      });
+      if (!featureFound) {
+        overlayRef.current?.setPosition(undefined);
+      }
+    });
+  }, [vehicles, map, showVehicleType, selectedVehicleId, onSelectVehicle]);
+
+  useEffect(() => {
+    if (!map || !selectedVehicleId) {
+        overlayRef.current?.setPosition(undefined);
         return;
     };
-    
-    if (isNaN(vehicle.longitude) || isNaN(vehicle.latitude)) return;
-
-    const lonLat = fromLonLat([vehicle.longitude, vehicle.latitude]);
-
-    const iconFeature = new Feature({
-      geometry: new Point(lonLat),
-    });
-
-    iconFeature.setStyle(
-      new Style({
-        image: new CircleStyle({
-          radius: 8,
-          fill: new Fill({ color: 'hsl(var(--primary))' }),
-          stroke: new Stroke({ color: '#ffffff', width: 2 }),
-        }),
-      })
-    );
-
-    markerLayer.current.getSource().clear();
-    markerLayer.current.getSource().addFeature(iconFeature);
-    
-    popupOverlay.current.setPosition(lonLat);
-    if (popupRef.current) {
-      popupRef.current.innerHTML = `<div class="bg-card text-card-foreground p-2 text-sm shadow rounded-md border border-border">
-        <strong>${vehicle.name}</strong><br/>
-        <p>Speed: ${vehicle.speed.toFixed(0)} km/h</p>
-        <p>Status: ${vehicle.status}</p>
-      </div>`;
+    const selected = vehicles.find((v) => v.id === selectedVehicleId);
+    if (selected) {
+      map.getView().animate({ center: fromLonLat([selected.longitude, selected.latitude]), duration: 500, zoom: 15 });
     }
-
-    if (!optimizedRoute) {
-        mapObj.current.getView().animate({ center: lonLat, zoom: 14, duration: 600 });
-    }
-  }, [vehicle, optimizedRoute]);
-
-  useEffect(() => {
-    if (!optimizedRoute || !routeLayer.current?.getSource() || !mapObj.current) {
-        routeLayer.current?.getSource().clear();
-        return
-    };
-
-    const route = optimizedRoute.routes?.[0];
-    if (!route?.geometry) return;
-
-    // The geometry from ORS is in EPSG:4326, we need to transform it to EPSG:3857 for the map
-    const routeCoordinates = route.geometry.coordinates.map((coord: [number, number]) => fromLonLat(coord));
-    
-    const routeFeature = new Feature({
-        geometry: new LineString(routeCoordinates),
-    });
-
-    routeLayer.current.getSource().clear();
-    routeLayer.current.getSource().addFeature(routeFeature);
-
-    const extent = routeFeature.getGeometry()?.getExtent();
-    if (extent) {
-      mapObj.current.getView().fit(extent, {
-        padding: [50, 50, 50, 50],
-        duration: 1000,
-      });
-    }
-  }, [optimizedRoute]);
+  }, [selectedVehicleId, vehicles, map]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="w-full h-full relative">
       <div ref={mapRef} className="w-full h-full" />
       <div ref={popupRef} className="ol-popup" />
     </div>
