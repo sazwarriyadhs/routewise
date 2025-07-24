@@ -52,12 +52,24 @@ export default function DashboardPage() {
         if (!response.ok) {
           throw new Error('Failed to fetch initial vehicle locations');
         }
-        const initialVehicles: Vehicle[] = await response.json();
+        const initialVehicles: any[] = await response.json();
         const vehicleMap: Record<string, Vehicle> = {};
-        initialVehicles.forEach(v => vehicleMap[v.id] = v);
+        initialVehicles.forEach(v => {
+            vehicleMap[v.vehicle_id] = {
+                id: v.vehicle_id,
+                name: `Vehicle ${v.vehicle_id}`,
+                latitude: v.latitude,
+                longitude: v.longitude,
+                speed: v.speed,
+                status: v.status,
+                type: 'Truck', // Default value
+                heading: 0, // Default value
+                fuelConsumption: 0, // Default value
+            };
+        });
         setVehicles(vehicleMap);
         if (initialVehicles.length > 0 && !selectedVehicleId) {
-            setSelectedVehicleId(initialVehicles[0].id);
+            setSelectedVehicleId(initialVehicles[0].vehicle_id);
         }
       } catch (error) {
         console.error("Failed to load initial data", error);
