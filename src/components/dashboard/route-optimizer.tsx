@@ -26,6 +26,10 @@ const ResultItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label
 export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExport }: RouteOptimizerProps) {
     const route = optimizedRoute?.routes?.[0];
     const summary = route?.summary;
+
+    const totalDistanceKm = summary?.distance ? (summary.distance / 1000) : 0;
+    const fuelEfficiency = 10; // km/liter (average)
+    const estimatedFuelUsage = (totalDistanceKm / fuelEfficiency).toFixed(2);
   
     return (
     <Card className="h-full flex flex-col">
@@ -48,7 +52,7 @@ export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExp
                  <ResultItem 
                     icon={<Route className="h-5 w-5" />}
                     label="Total Distance"
-                    value={(summary.distance / 1000).toFixed(2)}
+                    value={totalDistanceKm.toFixed(2)}
                     unit="km"
                 />
                  <ResultItem 
@@ -59,8 +63,8 @@ export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExp
                 />
                 <ResultItem 
                     icon={<Fuel className="h-5 w-5" />}
-                    label="Est. Fuel Savings"
-                    value={(summary.distance / 1000 * 0.15).toFixed(2)} // Dummy calculation
+                    label="Est. Fuel Usage"
+                    value={estimatedFuelUsage}
                     unit="liters"
                 />
             </div>
