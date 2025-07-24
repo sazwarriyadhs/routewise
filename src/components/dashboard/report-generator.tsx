@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon, Download, Loader2 } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import html2canvas from 'html2canvas'
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast"
+import { SpeedChart } from "./speed-chart"
 
 interface ReportGeneratorProps {
     date: DateRange | undefined;
@@ -62,6 +64,9 @@ function calculateTotalDistance(points: GPSLog[]): number {
 export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const { toast } = useToast();
+  const [chartData, setChartData] = React.useState<GPSLog[]>([]);
+  const chartRef = React.useRef<HTMLDivElement>(null);
+
 
   const handleGenerateReport = async () => {
     if (!date?.from || !date?.to) {
@@ -95,7 +100,7 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
             return;
         }
         
-        generatePdf(data, date);
+        await generatePdf(data, date);
 
     } catch (e: any) {
         toast({
@@ -108,15 +113,9 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
     }
   }
 
-  const generatePdf = (data: GPSLog[], dateRange: DateRange) => {
-    const doc = new jsPDF();
+  const generatePdf = async (data: GPSLog[], dateRange: DateRange) => {
+    const doc = new jsPDF('p', 'mm', 'a4');
     
-    doc.setFontSize(18);
-    doc.text("Laporan Riwayat Perjalanan Kendaraan", 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Period: ${format(dateRange.from!, "LLL dd, y")} to ${format(dateRange.to!, "LLL dd, y")}`, 14, 28)
-
     const logsByVehicle = data.reduce((acc, log) => {
         if (!acc[log.vehicle_id]) {
             acc[log.vehicle_id] = [];
@@ -125,22 +124,63 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
         return acc;
     }, {} as Record<string, GPSLog[]>);
 
-    let startY = 35;
+    let isFirstPage = true;
 
     for (const vehicleId in logsByVehicle) {
+        if (!isFirstPage) {
+            doc.addPage();
+        }
+        
+        doc.setFontSize(18);
+        doc.text("Vehicle Trip History Report", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Period: ${format(dateRange.from!, "LLL dd, y")} to ${format(dateRange.to!, "LLL dd, y")}`, 14, 28)
+
         const vehicleLogs = logsByVehicle[vehicleId];
         const totalDistance = calculateTotalDistance(vehicleLogs);
-        const totalSpeed = vehicleLogs.reduce((sum, log) => sum + (log.speed || 0), 0);
-        const avgSpeed = vehicleLogs.length > 0 ? (totalSpeed / vehicleLogs.filter(l => l.speed > 0).length) : 0;
+        const movingLogs = vehicleLogs.filter(l => l.speed > 0);
+        const totalSpeed = movingLogs.reduce((sum, log) => sum + (log.speed || 0), 0);
+        const avgSpeed = movingLogs.length > 0 ? (totalSpeed / movingLogs.length) : 0;
 
         doc.setFontSize(14);
-        doc.text(`Vehicle ID: ${vehicleId}`, 14, startY);
-        startY += 7;
+        doc.text(`Vehicle ID: ${vehicleId}`, 14, 40);
         
-        doc.setFontSize(10);
-        doc.text(`Total Distance: ${totalDistance.toFixed(2)} km`, 14, startY);
-        doc.text(`Average Speed: ${avgSpeed.toFixed(2)} km/h`, 70, startY);
-        startY += 5;
+        const summaryData = [
+            ['Total Distance', `${totalDistance.toFixed(2)} km`],
+            ['Average Speed (Moving)', `${avgSpeed.toFixed(2)} km/h`],
+            ['Total Records', `${vehicleLogs.length}`]
+        ];
+
+        (doc as any).autoTable({
+            startY: 45,
+            head: [['Metric', 'Value']],
+            body: summaryData,
+            theme: 'striped',
+            headStyles: { fontSize: 10 },
+            bodyStyles: { fontSize: 9 },
+        });
+
+        let lastY = (doc as any).lastAutoTable.finalY + 10;
+        
+        // Render chart off-screen, capture it, and add to PDF
+        setChartData(vehicleLogs);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Allow chart to render
+        
+        if (chartRef.current) {
+            const canvas = await html2canvas(chartRef.current, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const imgProps = doc.getImageProperties(imgData);
+            const pdfWidth = doc.internal.pageSize.getWidth() - 28;
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            doc.setFontSize(12);
+            doc.text("Speed Profile", 14, lastY);
+            lastY += 5;
+            doc.addImage(imgData, 'PNG', 14, lastY, pdfWidth, pdfHeight);
+            lastY += pdfHeight + 10;
+        }
+        setChartData([]); // Clear chart data
 
         const tableColumns = ["Timestamp", "Latitude", "Longitude", "Speed (km/h)"];
         const tableRows: any[][] = [];
@@ -158,93 +198,90 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
         (doc as any).autoTable({
             head: [tableColumns],
             body: tableRows,
-            startY: startY,
+            startY: lastY,
             theme: 'grid',
             headStyles: { fontSize: 8 },
             bodyStyles: { fontSize: 8 },
         });
 
-        startY = (doc as any).lastAutoTable.finalY + 15;
-
-        // Add a new page if the next vehicle's data won't fit
-        if (startY > 250) {
-            doc.addPage();
-            startY = 20;
-        }
+        isFirstPage = false;
     }
 
 
-    doc.save(`laporan-perjalanan_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    doc.save(`report-perjalanan_${format(new Date(), "yyyy-MM-dd")}.pdf`);
   }
 
   return (
-    <Card className="h-full flex flex-col">
-        <CardHeader>
-            <CardTitle>Report Generator</CardTitle>
-            <CardDescription>
-            Export historical vehicle location data for a selected date range.
-            </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow space-y-4">
-             <div className={cn("grid gap-2")}>
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        id="date"
-                        variant={"outline"}
-                        className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
-                        )}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date?.from ? (
-                        date.to ? (
-                            <>
-                            {format(date.from, "LLL dd, y")} -{" "}
-                            {format(date.to, "LLL dd, y")}
-                            </>
-                        ) : (
-                            format(date.from, "LLL dd, y")
-                        )
-                        ) : (
-                        <span>Pick a date</span>
-                        )}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={date?.from}
-                        selected={date}
-                        onSelect={onDateChange}
-                        numberOfMonths={2}
-                    />
-                    </PopoverContent>
-                </Popover>
-            </div>
-            <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
-                <p className="text-sm text-muted-foreground text-center">
-                    Select a date range and click generate to download the report.
-                </p>
-            </div>
-        </CardContent>
-        <CardFooter>
-            <Button 
-                className="w-full" 
-                onClick={handleGenerateReport}
-                disabled={isGenerating}
-            >
-                {isGenerating ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
-                ) : (
-                    <><Download className="mr-2 h-4 w-4" /> Generate Report</>
-                )}
-            </Button>
-        </CardFooter>
-    </Card>
+    <>
+      <div style={{ position: 'fixed', left: '-2000px', top: 0 }}>
+        <SpeedChart data={chartData} ref={chartRef} />
+      </div>
+      <Card className="h-full flex flex-col">
+          <CardHeader>
+              <CardTitle>Report Generator</CardTitle>
+              <CardDescription>
+              Export historical vehicle location data for a selected date range.
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow space-y-4">
+              <div className={cn("grid gap-2")}>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                      <Button
+                          id="date"
+                          variant={"outline"}
+                          className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                          )}
+                      >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date?.from ? (
+                          date.to ? (
+                              <>
+                              {format(date.from, "LLL dd, y")} -{" "}
+                              {format(date.to, "LLL dd, y")}
+                              </>
+                          ) : (
+                              format(date.from, "LLL dd, y")
+                          )
+                          ) : (
+                          <span>Pick a date</span>
+                          )}
+                      </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={date?.from}
+                          selected={date}
+                          onSelect={onDateChange}
+                          numberOfMonths={2}
+                      />
+                      </PopoverContent>
+                  </Popover>
+              </div>
+              <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+                  <p className="text-sm text-muted-foreground text-center">
+                      Select a date range and click generate to download the report.
+                  </p>
+              </div>
+          </CardContent>
+          <CardFooter>
+              <Button 
+                  className="w-full" 
+                  onClick={handleGenerateReport}
+                  disabled={isGenerating}
+              >
+                  {isGenerating ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                  ) : (
+                      <><Download className="mr-2 h-4 w-4" /> Generate Report</>
+                  )}
+              </Button>
+          </CardFooter>
+      </Card>
+    </>
   )
 }
-
-    
