@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { format, subDays } from "date-fns"
+import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { Calendar as CalendarIcon, Download, Loader2 } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import jsPDF from 'jspdf'
@@ -38,8 +39,8 @@ export function ReportGenerator() {
 
     setIsGenerating(true);
     try {
-        const fromISO = date.from.toISOString();
-        const toISO = date.to.toISOString();
+        const fromISO = startOfDay(date.from).toISOString();
+        const toISO = endOfDay(date.to).toISOString();
 
         const response = await fetch(`/api/reports/historical?startDate=${fromISO}&endDate=${toISO}`);
         
