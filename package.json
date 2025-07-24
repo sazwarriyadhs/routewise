@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "npm run dev:socket & next dev --turbopack -p 9002",
     "dev:socket": "tsx src/lib/socket-server.ts",
+    "simulate": "tsx src/lib/vehicle-simulator.ts",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
