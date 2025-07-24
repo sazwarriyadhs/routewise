@@ -51,7 +51,7 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
                     variant: "destructive"
                 })
                 setFileName(null);
-                e.target.value = '';
+                if (e.target) e.target.value = '';
             }
         },
         error: (err: any) => {
@@ -61,7 +61,7 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
                 variant: "destructive"
             });
             setFileName(null);
-            e.target.value = '';
+            if (e.target) e.target.value = '';
         }
     });
   };
@@ -73,7 +73,7 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
             <CardDescription>Upload a CSV file with `lat` and `lon` columns to simulate a vehicle's path.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-            <Label htmlFor="gps-upload" className="flex items-center gap-2">
+            <Label htmlFor="gps-upload" className="flex items-center gap-2 cursor-pointer">
                 <Upload className="h-4 w-4" />
                 Upload GPS File (.csv)
             </Label>
@@ -82,8 +82,9 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
                 type="file"
                 accept=".csv"
                 onChange={handleFileUpload}
+                className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
             />
-            {fileName && <p className="mt-2 text-sm text-green-600">Loaded: {fileName}</p>}
+            {fileName && <p className="mt-2 text-sm text-muted-foreground">Loaded: {fileName}</p>}
         </CardContent>
     </Card>
   );
