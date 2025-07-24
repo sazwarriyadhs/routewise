@@ -86,18 +86,25 @@ const LiveMap = () => {
 
       feature.setStyle(style);
       vectorSource.current.addFeature(feature);
-
-      // Zoom if vehicle matches search
-      if (searchId && vehicle.id.toLowerCase().includes(searchId.toLowerCase())) {
-        const view = mapInstance.current?.getView();
-        view?.animate({
-          center: fromLonLat([vehicle.longitude, vehicle.latitude]),
-          zoom: 16,
-          duration: 1000,
-        });
-      }
     });
-  }, [vehicles, searchId]);
+  }, [vehicles]);
+  
+  useEffect(() => {
+    if (!searchId || !mapInstance.current) return
+  
+    const match = Object.values(vehicles).find(
+      (v) => v.id.toLowerCase().includes(searchId.toLowerCase())
+    )
+  
+    if (match) {
+      const view = mapInstance.current.getView()
+      view.animate({
+        center: fromLonLat([match.longitude, match.latitude]),
+        zoom: 16,
+        duration: 1000,
+      })
+    }
+  }, [searchId, vehicles])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
