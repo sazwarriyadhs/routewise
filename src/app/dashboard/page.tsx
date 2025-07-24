@@ -25,6 +25,9 @@ import { io, Socket } from 'socket.io-client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RouteOptimizer } from '@/components/dashboard/route-optimizer';
 import { optimizeRoute } from '@/ai/flows/optimize-route-flow';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 
 const socket: Socket = io('http://localhost:3001');
 
@@ -84,6 +87,7 @@ export default function DashboardPage() {
     }
     
     setIsOptimizing(true);
+    setOptimizedRoute(null);
     try {
         const result = await optimizeRoute({
             vehicles: activeVehicles.map(v => ({
@@ -93,6 +97,10 @@ export default function DashboardPage() {
             startLocation: [activeVehicles[0].longitude, activeVehicles[0].latitude],
         });
         setOptimizedRoute(result);
+        toast({
+            title: "Route Optimized",
+            description: "The optimal route has been calculated and displayed on the map.",
+        });
     } catch(e: any) {
         toast({
             title: "Optimization Failed",
@@ -103,6 +111,68 @@ export default function DashboardPage() {
         setIsOptimizing(false);
     }
   }
+
+  const handleExportPdf = () => {
+    if (!optimizedRoute) return;
+
+    const doc = new jsPDF();
+    const route = optimizedRoute.routes?.[0];
+    const summary = route?.summary;
+    const activeVehicles = Object.values(vehicles).filter(v => v.status !== 'Offline');
+
+
+    doc.setFontSize(18);
+    doc.text('Optimized Route Report', 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+
+    doc.setFontSize(14);
+    doc.text('Summary', 14, 40);
+
+    const summaryData = [
+        ['Total Vehicles', `${activeVehicles.length}`],
+        ['Total Distance', `${(summary.distance / 1000).toFixed(2)} km`],
+        ['Total Duration', `${(summary.duration / 60).toFixed(0)} minutes`],
+        ['Est. Fuel Savings', `${(summary.distance / 1000 * 0.15).toFixed(2)} liters`],
+    ];
+
+    (doc as any).autoTable({
+        startY: 45,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        theme: 'striped',
+    });
+
+    doc.addPage();
+    doc.setFontSize(14);
+    doc.text('Route Details', 14, 22);
+    
+    const tableColumn = ["Order", "Vehicle ID", "Vehicle Name", "Stop Type"];
+    const tableRows: any[][] = [];
+
+    route.steps.forEach((step: any) => {
+        const vehicle = step.type === 'start' || step.type === 'end' ? activeVehicles[0] : activeVehicles.find(v => v.id === optimizedRoute.jobs[step.job -1]?.description);
+
+        const row = [
+            step.id,
+            vehicle?.id || 'N/A',
+            vehicle?.name || 'Depot',
+            step.type,
+        ];
+        tableRows.push(row);
+    });
+
+    (doc as any).autoTable({
+        startY: 30,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'grid',
+    });
+
+
+    doc.save('route_optimization_report.pdf');
+  };
 
 
   return (
@@ -162,6 +232,7 @@ export default function DashboardPage() {
                           onOptimize={handleOptimize}
                           isOptimizing={isOptimizing}
                           optimizedRoute={optimizedRoute}
+                          onExport={handleExportPdf}
                         />
                     </TabsContent>
                 </Tabs>

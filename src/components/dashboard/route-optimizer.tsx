@@ -2,12 +2,13 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Route, Fuel, Clock } from 'lucide-react';
+import { Loader2, Route, Fuel, Clock, Download } from 'lucide-react';
 
 interface RouteOptimizerProps {
     onOptimize: () => void;
     isOptimizing: boolean;
     optimizedRoute: any | null;
+    onExport: () => void;
 }
 
 const ResultItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label: string, value: string | number, unit?: string }) => (
@@ -22,7 +23,7 @@ const ResultItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label
     </div>
   );
 
-export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute }: RouteOptimizerProps) {
+export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExport }: RouteOptimizerProps) {
     const route = optimizedRoute?.routes?.[0];
     const summary = route?.summary;
   
@@ -71,10 +72,15 @@ export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute }: Rou
             </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex-col gap-2 items-stretch">
         <Button onClick={onOptimize} disabled={isOptimizing} className="w-full">
-          {isOptimizing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Optimize Route
+          {isOptimizing ? (
+             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Optimizing...</>
+          ) : 'Re-calculate Route'}
+        </Button>
+        <Button onClick={onExport} disabled={!optimizedRoute || isOptimizing} variant="outline" className="w-full">
+            <Download className="mr-2 h-4 w-4" />
+            Export to PDF
         </Button>
       </CardFooter>
     </Card>
