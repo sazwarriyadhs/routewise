@@ -89,20 +89,20 @@ export function ReportGenerator() {
     });
 
     doc.setFontSize(18);
-    doc.text("Historical Vehicle Report", 14, 22);
+    doc.text("Laporan Riwayat Perjalanan Kendaraan", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Period: ${format(dateRange.from!, "LLL dd, y")} to ${format(dateRange.to!, "LLL dd, y")}`, 14, 28)
 
     
-    (doc as any).autoTable({
+    autoTable(doc, {
         head: [tableColumns],
         body: tableRows,
         startY: 35,
         theme: 'grid',
     });
 
-    doc.save(`historical_report_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    doc.save(`laporan-perjalanan_${format(new Date(), "yyyy-MM-dd")}.pdf`);
   }
 
   return (
