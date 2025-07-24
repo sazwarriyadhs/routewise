@@ -11,6 +11,7 @@ const gpsLogSchema = z.object({
   timestamp: z.string().datetime().optional(),
 });
 
+// Allow either a single log or an array of logs
 const uploadSchema = z.object({
   logs: z.array(gpsLogSchema),
 });
@@ -18,7 +19,22 @@ const uploadSchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { logs } = uploadSchema.parse(body);
+    
+    // Check if the body is a single log object and wrap it in an array if so
+    const logsPayload = Array.isArray(body.logs) ? body.logs : [body];
+    const validation = uploadSchema.safeParse({ logs: logsPayload });
+
+    if (!validation.success) {
+      // Try parsing as a single object if array fails
+      const singleLogValidation = gpsLogSchema.safeParse(body);
+      if(singleLogValidation.success) {
+        validation.data = { logs: [singleLogValidation.data] };
+      } else {
+        return NextResponse.json({ message: 'Invalid data format.', errors: validation.error.errors }, { status: 400 });
+      }
+    }
+
+    const { logs } = validation.data;
 
     if (!logs || logs.length === 0) {
       return NextResponse.json({ message: 'No logs provided.' }, { status: 400 });
