@@ -24,6 +24,41 @@ interface ReportGeneratorProps {
     onDateChange: (date: DateRange | undefined) => void;
 }
 
+interface GPSLog {
+  vehicle_id: string;
+  latitude: number;
+  longitude: number;
+  speed: number;
+  timestamp: string;
+}
+
+// Helper function to calculate distance between two lat/lon points (Haversine formula)
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const R = 6371; // Earth's radius in km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calculateTotalDistance(points: GPSLog[]): number {
+    if (points.length < 2) return 0;
+    let total = 0;
+    for (let i = 1; i < points.length; i++) {
+        total += haversine(
+            points[i - 1].latitude,
+            points[i - 1].longitude,
+            points[i].latitude,
+            points[i].longitude
+        );
+    }
+    return total;
+}
+
+
 export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const { toast } = useToast();
@@ -50,7 +85,7 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
             throw new Error(error.message || "Failed to fetch report data.");
         }
         
-        const data = await response.json();
+        const data: GPSLog[] = await response.json();
 
         if (data.length === 0) {
             toast({
@@ -73,35 +108,71 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
     }
   }
 
-  const generatePdf = (data: any[], dateRange: DateRange) => {
+  const generatePdf = (data: GPSLog[], dateRange: DateRange) => {
     const doc = new jsPDF();
-    const tableColumns = ["Vehicle ID", "Timestamp", "Latitude", "Longitude", "Speed (km/h)"];
-    const tableRows: any[][] = [];
-
-    data.forEach(log => {
-        const row = [
-            log.vehicle_id,
-            format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss'),
-            log.latitude.toFixed(6),
-            log.longitude.toFixed(6),
-            log.speed,
-        ];
-        tableRows.push(row);
-    });
-
+    
     doc.setFontSize(18);
     doc.text("Laporan Riwayat Perjalanan Kendaraan", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Period: ${format(dateRange.from!, "LLL dd, y")} to ${format(dateRange.to!, "LLL dd, y")}`, 14, 28)
 
-    
-    ;(doc as any).autoTable({
-        head: [tableColumns],
-        body: tableRows,
-        startY: 35,
-        theme: 'grid',
-    });
+    const logsByVehicle = data.reduce((acc, log) => {
+        if (!acc[log.vehicle_id]) {
+            acc[log.vehicle_id] = [];
+        }
+        acc[log.vehicle_id].push(log);
+        return acc;
+    }, {} as Record<string, GPSLog[]>);
+
+    let startY = 35;
+
+    for (const vehicleId in logsByVehicle) {
+        const vehicleLogs = logsByVehicle[vehicleId];
+        const totalDistance = calculateTotalDistance(vehicleLogs);
+        const totalSpeed = vehicleLogs.reduce((sum, log) => sum + (log.speed || 0), 0);
+        const avgSpeed = vehicleLogs.length > 0 ? (totalSpeed / vehicleLogs.filter(l => l.speed > 0).length) : 0;
+
+        doc.setFontSize(14);
+        doc.text(`Vehicle ID: ${vehicleId}`, 14, startY);
+        startY += 7;
+        
+        doc.setFontSize(10);
+        doc.text(`Total Distance: ${totalDistance.toFixed(2)} km`, 14, startY);
+        doc.text(`Average Speed: ${avgSpeed.toFixed(2)} km/h`, 70, startY);
+        startY += 5;
+
+        const tableColumns = ["Timestamp", "Latitude", "Longitude", "Speed (km/h)"];
+        const tableRows: any[][] = [];
+
+        vehicleLogs.forEach(log => {
+            const row = [
+                format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss'),
+                log.latitude.toFixed(6),
+                log.longitude.toFixed(6),
+                log.speed,
+            ];
+            tableRows.push(row);
+        });
+
+        (doc as any).autoTable({
+            head: [tableColumns],
+            body: tableRows,
+            startY: startY,
+            theme: 'grid',
+            headStyles: { fontSize: 8 },
+            bodyStyles: { fontSize: 8 },
+        });
+
+        startY = (doc as any).lastAutoTable.finalY + 15;
+
+        // Add a new page if the next vehicle's data won't fit
+        if (startY > 250) {
+            doc.addPage();
+            startY = 20;
+        }
+    }
+
 
     doc.save(`laporan-perjalanan_${format(new Date(), "yyyy-MM-dd")}.pdf`);
   }
@@ -175,3 +246,5 @@ export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
     </Card>
   )
 }
+
+    
