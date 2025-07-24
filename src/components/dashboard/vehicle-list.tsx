@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import type { Vehicle } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
-import { Card } from '../ui/card';
+import { Card, CardHeader, CardTitle } from '../ui/card';
 
 interface VehicleListProps {
   vehicles: Vehicle[];
   selectedVehicleId: string | null;
   onSelectVehicle: (vehicle: Vehicle) => void;
-  isCollapsed: boolean;
 }
 
 export function VehicleList({
@@ -32,11 +31,11 @@ export function VehicleList({
 
   return (
     <Card className="h-full flex flex-col">
-       <div className="p-4 border-b">
-         <h3 className="text-lg font-semibold text-foreground">
+       <CardHeader className="p-4 border-b">
+         <CardTitle className="text-lg font-semibold text-foreground">
             Vehicles ({vehicles.length})
-         </h3>
-       </div>
+         </CardTitle>
+       </CardHeader>
         <ScrollArea className="flex-1">
             <div className="flex flex-col gap-1 p-2">
             {vehicles.map((vehicle) => (
