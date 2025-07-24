@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { LogOut, User, Zap } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,9 @@ import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VehicleList } from '@/components/dashboard/vehicle-list';
 import { io, Socket } from 'socket.io-client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RouteOptimizer } from '@/components/dashboard/route-optimizer';
+import { optimizeRoute } from '@/ai/flows/optimize-route-flow';
 
 const socket: Socket = io('http://localhost:3001');
 
@@ -41,6 +44,9 @@ export default function DashboardPage() {
   const [selectedVehicleId, setSelectedVehicleId] = React.useState<string>(
     mockVehicles[0].id
   );
+  const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
+  const [isOptimizing, setIsOptimizing] = React.useState(false);
+
 
   React.useEffect(() => {
     socket.on('connect', () => console.log('Dashboard connected to socket server'));
@@ -65,6 +71,39 @@ export default function DashboardPage() {
     });
     router.replace('/');
   };
+
+  const handleOptimize = async () => {
+    const activeVehicles = Object.values(vehicles).filter(v => v.status !== 'Offline');
+    if (activeVehicles.length < 2) {
+      toast({
+        title: "Not enough vehicles",
+        description: "Need at least 2 active vehicles to optimize a route.",
+        variant: 'destructive',
+      })
+      return;
+    }
+    
+    setIsOptimizing(true);
+    try {
+        const result = await optimizeRoute({
+            vehicles: activeVehicles.map(v => ({
+                id: v.id,
+                location: [v.longitude, v.latitude],
+            })),
+            startLocation: [activeVehicles[0].longitude, activeVehicles[0].latitude],
+        });
+        setOptimizedRoute(result);
+    } catch(e: any) {
+        toast({
+            title: "Optimization Failed",
+            description: e.message || "Could not generate an optimized route.",
+            variant: 'destructive',
+        })
+    } finally {
+        setIsOptimizing(false);
+    }
+  }
+
 
   return (
     <div className="flex h-screen w-full bg-muted/40 flex-col">
@@ -107,10 +146,25 @@ export default function DashboardPage() {
                 />
             </div>
             <div className="col-span-7 h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
-                <VehicleMap vehicle={selectedVehicle} />
+                <VehicleMap vehicle={selectedVehicle} optimizedRoute={optimizedRoute} />
             </div>
             <div className="col-span-3 h-full">
-                <VehicleDetails vehicle={selectedVehicle} />
+                <Tabs defaultValue="details" className="h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="details">Vehicle Details</TabsTrigger>
+                        <TabsTrigger value="optimizer">Route Optimizer</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="details" className="flex-grow">
+                        <VehicleDetails vehicle={selectedVehicle} />
+                    </TabsContent>
+                    <TabsContent value="optimizer" className="flex-grow">
+                        <RouteOptimizer 
+                          onOptimize={handleOptimize}
+                          isOptimizing={isOptimizing}
+                          optimizedRoute={optimizedRoute}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
         </main>
     </div>

@@ -9,6 +9,7 @@ import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { Feature } from 'ol';
 import Point from 'ol/geom/Point';
+import LineString from 'ol/geom/LineString';
 import { Vector as VectorLayer } from 'ol/layer';
 import VectorSource from 'ol/source/Vector';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
@@ -17,12 +18,14 @@ import type { Vehicle } from '@/lib/types';
 
 interface VehicleMapProps {
   vehicle: Vehicle | null;
+  optimizedRoute?: any;
 }
 
-export default function VehicleMap({ vehicle }: VehicleMapProps) {
+export default function VehicleMap({ vehicle, optimizedRoute }: VehicleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapObj = useRef<Map | null>(null);
   const markerLayer = useRef<VectorLayer<any> | null>(null);
+  const routeLayer = useRef<VectorLayer<any> | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const popupOverlay = useRef<Overlay | null>(null);
 
@@ -53,6 +56,18 @@ export default function VehicleMap({ vehicle }: VehicleMapProps) {
       source: new VectorSource(),
     });
     mapObj.current.addLayer(markerLayer.current);
+
+    routeLayer.current = new VectorLayer({
+        source: new VectorSource(),
+        style: new Style({
+            stroke: new Stroke({
+                color: 'hsl(var(--accent))',
+                width: 4,
+            }),
+        }),
+    });
+    mapObj.current.addLayer(routeLayer.current);
+
 
     return () => mapObj.current?.setTarget(undefined);
   }, []);
@@ -90,8 +105,35 @@ export default function VehicleMap({ vehicle }: VehicleMapProps) {
       </div>`;
     }
 
-    mapObj.current.getView().animate({ center: lonLat, zoom: 14, duration: 600 });
-  }, [vehicle]);
+    if (!optimizedRoute) {
+        mapObj.current.getView().animate({ center: lonLat, zoom: 14, duration: 600 });
+    }
+  }, [vehicle, optimizedRoute]);
+
+  useEffect(() => {
+    if (!optimizedRoute || !routeLayer.current?.getSource() || !mapObj.current) {
+        routeLayer.current?.getSource().clear();
+        return
+    };
+
+    const route = optimizedRoute.routes?.[0];
+    if (!route?.geometry) return;
+
+    const routeFeature = new Feature({
+        geometry: new LineString(route.geometry).transform('EPSG:4326', 'EPSG:3857'),
+    });
+
+    routeLayer.current.getSource().clear();
+    routeLayer.current.getSource().addFeature(routeFeature);
+
+    const extent = routeFeature.getGeometry()?.getExtent();
+    if (extent) {
+      mapObj.current.getView().fit(extent, {
+        padding: [50, 50, 50, 50],
+        duration: 1000,
+      });
+    }
+  }, [optimizedRoute]);
 
   return (
     <div className="relative w-full h-full">
