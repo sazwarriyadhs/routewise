@@ -1,11 +1,10 @@
-
 'use client';
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Coord } from './simulated-vehicle';
 import Papa from 'papaparse';
 import { Button } from '../ui/button';
@@ -70,8 +69,8 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
                 onDataLoaded(coordsForSim);
                 
                 toast({
-                    title: "File Uploaded",
-                    description: `${parsed.length} GPS logs uploaded and saved from ${file.name}.`,
+                    title: "File Uploaded & Simulation Started",
+                    description: `${parsed.length} GPS logs saved from ${file.name}.`,
                 })
 
             } catch(err: any) {
@@ -125,7 +124,7 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
                    Processing and uploading file...
                 </div>
             )}
-            {fileName && !uploading && <p className="mt-2 text-sm text-muted-foreground">Loaded: {fileName}</p>}
+            {fileName && !uploading && <p className="mt-2 text-sm text-muted-foreground">Simulating path from: {fileName}</p>}
         </CardContent>
     </Card>
   );
