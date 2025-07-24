@@ -7,10 +7,8 @@
 import { io } from 'socket.io-client';
 
 // Dummy data awal: posisi Jakarta
-const vehicles = [
-  { id: 'TRUCK-001', latitude: -6.2, longitude: 106.8 },
-  { id: 'TRUCK-002', latitude: -6.25, longitude: 106.75 },
-];
+const vehicle = { id: 'TRUCK-001', latitude: -6.2, longitude: 106.8 };
+
 
 const socket = io('http://localhost:3001'); // Connect to our socket server on port 3001
 
@@ -18,14 +16,12 @@ socket.on('connect', () => {
   console.log('🛰️ Simulator connected to server');
 
   setInterval(() => {
-    vehicles.forEach(vehicle => {
-      // Simulasi pergerakan acak
-      vehicle.latitude += (Math.random() - 0.5) * 0.001;
-      vehicle.longitude += (Math.random() - 0.5) * 0.001;
+    // Simulasi pergerakan acak
+    vehicle.latitude += (Math.random() - 0.5) * 0.001;
+    vehicle.longitude += (Math.random() - 0.5) * 0.001;
 
-      socket.emit('location:update', vehicle);
-      console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)})`);
-    })
+    socket.emit('location:update', vehicle);
+    console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)})`);
   }, 2000); // Update every 2 seconds for a more fluid feel
 });
 
