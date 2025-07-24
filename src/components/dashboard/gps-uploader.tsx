@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Upload } from 'lucide-react';
 import type { Coord } from './simulated-vehicle';
+import Papa from 'papaparse';
 
 
 interface GPSUploaderProps {
@@ -21,52 +22,65 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
     if (!file) return;
 
     setFileName(file.name);
-    const reader = new FileReader();
+    
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+            try {
+                const coords = results.data as any[];
+                const parsed: Coord[] = coords.map((row) => ({
+                    lat: parseFloat(row.lat || row.latitude),
+                    lon: parseFloat(row.lon || row.longitude),
+                })).filter(c => !isNaN(c.lat) && !isNaN(c.lon));
 
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result as string);
-        if (
-          !Array.isArray(data) ||
-          !data.every(
-            (item) => typeof item === 'object' && 'lat' in item && 'lon' in item
-          )
-        ) {
-          throw new Error(
-            'Invalid file format. Must be an array of objects with "lat" and "lon" properties.'
-          );
+                if (parsed.length === 0) {
+                    throw new Error("CSV file is empty or does not contain valid 'lat'/'lon' columns.");
+                }
+
+                onDataLoaded(parsed);
+                toast({
+                    title: "File Loaded",
+                    description: `${parsed.length} coordinates loaded from ${file.name}.`,
+                })
+
+            } catch(err: any) {
+                toast({
+                    title: "File Read Error",
+                    description: err.message || "Could not parse the CSV file.",
+                    variant: "destructive"
+                })
+                setFileName(null);
+                e.target.value = '';
+            }
+        },
+        error: (err: any) => {
+            toast({
+                title: "File Read Error",
+                description: err.message || "An error occurred while parsing the CSV file.",
+                variant: "destructive"
+            });
+            setFileName(null);
+            e.target.value = '';
         }
-        
-        onDataLoaded(data);
-      } catch (err: any) {
-        toast({
-            title: "File Read Error",
-            description: err.message || "Invalid GPS file format. Please use a valid JSON file.",
-            variant: "destructive"
-        })
-        setFileName(null);
-        e.target.value = '';
-      }
-    };
-
-    reader.readAsText(file);
+    });
   };
 
   return (
     <Card>
         <CardHeader>
             <CardTitle>GPS Simulation</CardTitle>
-            <CardDescription>Upload a JSON file with an array of coordinates to simulate a vehicle's path.</CardDescription>
+            <CardDescription>Upload a CSV file with `lat` and `lon` columns to simulate a vehicle's path.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
             <Label htmlFor="gps-upload" className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                Upload GPS File (.json)
+                Upload GPS File (.csv)
             </Label>
             <Input
                 id="gps-upload"
                 type="file"
-                accept=".json"
+                accept=".csv"
                 onChange={handleFileUpload}
             />
             {fileName && <p className="mt-2 text-sm text-green-600">Loaded: {fileName}</p>}
