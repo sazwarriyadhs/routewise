@@ -15,7 +15,7 @@ interface VehicleDetailsProps {
   vehicle: Vehicle | null;
 }
 
-const DetailItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label: string, value: string | number, unit?: string }) => (
+const DetailItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label: string, value: string | number | React.ReactNode, unit?: string }) => (
   <div className="flex items-center justify-between">
     <div className="flex items-center gap-3">
       <div className="text-muted-foreground">{icon}</div>
