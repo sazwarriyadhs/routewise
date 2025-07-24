@@ -36,7 +36,7 @@ const socket: Socket = io('http://localhost:3001');
 
 const VehicleMap = dynamic(() => import('@/components/dashboard/vehicle-map'), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <Skeleton className="h-[500px] w-full" />,
 });
 
 export default function DashboardPage() {
@@ -46,7 +46,6 @@ export default function DashboardPage() {
   const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(null);
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
-  const [simulatedGpsData, setSimulatedGpsData] = React.useState<Coord[]>([]);
   const [initialLoadingError, setInitialLoadingError] = React.useState<string | null>(null);
 
 
@@ -240,21 +239,11 @@ export default function DashboardPage() {
     doc.save('route_optimization_report.pdf');
   };
 
-  const handleGpsDataLoaded = (data: Coord[]) => {
-    setSimulatedGpsData([]); // Clear previous simulation
-    if (selectedVehicleId) {
+  const handleGpsDataLoaded = () => {
       toast({
         title: "Simulation Started",
-        description: "Vehicle is now moving along the uploaded path.",
+        description: "Vehicle data is being simulated and saved to the database.",
       });
-      setSimulatedGpsData(data);
-    } else {
-       toast({
-        title: "No Vehicle Selected",
-        description: "Please select a vehicle to start the simulation.",
-        variant: "destructive",
-      });
-    }
   };
 
   return (
@@ -314,10 +303,6 @@ export default function DashboardPage() {
                 ) : (
                   <VehicleMap 
                     vehicles={Object.values(vehicles)}
-                    selectedVehicleId={selectedVehicleId}
-                    onSelectVehicle={(id) => setSelectedVehicleId(id)}
-                    showVehicleType={['Truck', 'Van', 'Car']}
-                    simulatedGpsData={simulatedGpsData}
                   />
               )}
             </div>
@@ -349,3 +334,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
