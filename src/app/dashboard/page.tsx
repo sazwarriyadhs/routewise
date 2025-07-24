@@ -3,15 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import {
-  ChevronsLeft,
-  ChevronsRight,
-  LogOut,
-  Map,
-  Truck,
-  User,
-  Zap,
-} from 'lucide-react';
+import { LogOut, User, Zap } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,14 +21,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockVehicles } from '@/lib/mock-data';
 import type { Vehicle, OptimizedRouteResult } from '@/lib/types';
 import { RouteOptimizer } from '@/components/dashboard/route-optimizer';
 import { VehicleDetails } from '@/components/dashboard/vehicle-details';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,14 +52,13 @@ export default function DashboardPage() {
   const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(
     mockVehicles[0].id
   );
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [optimizationResult, setOptimizationResult] =
     React.useState<OptimizedRouteResult | null>(null);
 
   React.useEffect(() => {
     socket.on('connect', () => console.log('Dashboard connected to socket server'));
     socket.on('location:update', (data: Vehicle) => {
-      setVehicles(prev => ({ ...prev, [data.id]: data }));
+      setVehicles(prev => ({ ...prev, [data.id]: { ...(prev[data.id] || {}), ...data } }));
     });
 
     return () => {
@@ -107,52 +96,24 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-muted/40">
-      <aside
-        className={cn(
-          'flex h-screen flex-col border-r bg-background transition-all',
-          isSidebarCollapsed ? 'w-16' : 'w-72'
-        )}
-      >
-        <div className="flex h-16 items-center border-b px-4 shrink-0">
-          <div className="flex items-center gap-2 font-semibold">
+    <div className="flex h-screen w-full bg-muted/40 flex-col">
+       <header className="flex h-16 items-center justify-between gap-4 border-b bg-background px-6 shrink-0">
+          <div className="flex items-center gap-4">
             <Icons.Logo className="h-6 w-6 text-primary" />
-            {!isSidebarCollapsed && <span>RouteWise</span>}
+            <h1 className="text-xl font-semibold">
+              Real-time Route Optimization
+            </h1>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto h-8 w-8"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          >
-            {isSidebarCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-          </Button>
-        </div>
-        <ScrollArea className="flex-1">
-          <VehicleList
-            vehicles={Object.values(vehicles)}
-            selectedVehicleId={selectedVehicleId}
-            onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
-            isCollapsed={isSidebarCollapsed}
-          />
-        </ScrollArea>
-        <div className="mt-auto border-t p-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className={cn("w-full justify-start gap-2", isSidebarCollapsed && 'h-10 w-10 justify-center p-0')}>
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="h-10 w-10 p-0 rounded-full">
+                <Avatar className="h-9 w-9">
                   <AvatarImage src="https://placehold.co/40x40" alt="@user" />
                   <AvatarFallback>U</AvatarFallback>
                 </Avatar>
-                {!isSidebarCollapsed && (
-                  <div className="text-left">
-                    <p className="text-sm font-medium">Demo User</p>
-                    <p className="text-xs text-muted-foreground">admin@prowess.com</p>
-                  </div>
-                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start">
+            <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
@@ -165,64 +126,64 @@ export default function DashboardPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      </aside>
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center gap-4 border-b bg-background px-6">
-          <h1 className="text-xl font-semibold">
-           Real-time Route Optimization
-          </h1>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:flex-row md:gap-8">
-          <div className="flex-1 rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
-            <LiveMap />
-          </div>
-          <div className="w-full md:w-[400px] lg:w-[450px]">
-            <Tabs defaultValue="details" className="h-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="details">Vehicle Details</TabsTrigger>
-                <TabsTrigger value="optimize">
-                  <Zap className="mr-2 h-4 w-4" /> AI Optimize
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="details">
-                <VehicleDetails vehicle={selectedVehicle} />
-              </TabsContent>
-              <TabsContent value="optimize">
-                <RouteOptimizer
-                  vehicle={selectedVehicle}
-                  onOptimizationResult={setOptimizationResult}
+        <main className="flex-1 grid grid-cols-12 gap-4 p-4">
+            <div className="col-span-2 h-full">
+                 <VehicleList
+                    vehicles={Object.values(vehicles)}
+                    selectedVehicleId={selectedVehicleId}
+                    onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
+                    isCollapsed={false}
                 />
-                 {optimizationResult && (
-                  <Card className="mt-4">
-                    <CardHeader>
-                      <CardTitle>Optimization Complete</CardTitle>
-                      <CardDescription>AI-powered route suggestion.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                      <div>
-                        <h4 className="font-semibold">Suggested Route</h4>
-                        <p className="text-muted-foreground">{optimizationResult.optimizedRoute}</p>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Est. Fuel Savings</h4>
-                        <Badge variant="secondary">{optimizationResult.estimatedFuelSavings.toFixed(2)} Liters</Badge>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Reasoning</h4>
-                        <p className="text-muted-foreground">{optimizationResult.reasoning}</p>
-                      </div>
-                       <Button onClick={handleGenerateReport} className="w-full mt-4">
-                        Generate PDF Report
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
+            </div>
+            <div className="col-span-7 h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
+                <LiveMap />
+            </div>
+            <div className="col-span-3 h-full">
+                 <Tabs defaultValue="details" className="h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="details">Vehicle Details</TabsTrigger>
+                        <TabsTrigger value="optimize">
+                        <Zap className="mr-2 h-4 w-4" /> AI Optimize
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="details" className="flex-1">
+                        <VehicleDetails vehicle={selectedVehicle} />
+                    </TabsContent>
+                    <TabsContent value="optimize" className="flex-1">
+                        <RouteOptimizer
+                        vehicle={selectedVehicle}
+                        onOptimizationResult={setOptimizationResult}
+                        />
+                        {optimizationResult && (
+                        <Card className="mt-4">
+                            <CardHeader>
+                            <CardTitle>Optimization Complete</CardTitle>
+                            <CardDescription>AI-powered route suggestion.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 text-sm">
+                            <div>
+                                <h4 className="font-semibold">Suggested Route</h4>
+                                <p className="text-muted-foreground">{optimizationResult.optimizedRoute}</p>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold">Est. Fuel Savings</h4>
+                                <Badge variant="secondary">{optimizationResult.estimatedFuelSavings.toFixed(2)} Liters</Badge>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold">Reasoning</h4>
+                                <p className="text-muted-foreground">{optimizationResult.reasoning}</p>
+                            </div>
+                            <Button onClick={handleGenerateReport} className="w-full mt-4">
+                                Generate PDF Report
+                            </Button>
+                            </CardContent>
+                        </Card>
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </div>
         </main>
-      </div>
     </div>
   );
 }
