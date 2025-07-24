@@ -14,7 +14,7 @@ export default function RootLayout({
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 2000); 
+    }, 5000); 
 
     return () => clearTimeout(timer);
   }, []);
@@ -33,7 +33,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         {loading && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background animate-fade-out" style={{animationDelay: '1.5s'}}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background animate-fade-out" style={{animationDelay: '4.5s'}}>
             <div className="animate-pulse-slow">
               <Icons.Logo className="h-24 w-auto" />
             </div>
