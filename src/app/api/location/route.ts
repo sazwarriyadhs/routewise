@@ -70,7 +70,7 @@ export async function GET() {
             END
           ELSE 'Offline'
         END as status
-      FROM vehicle_locations vl;
+      FROM vehicle_locations AS vl;
     `);
     return NextResponse.json(rows);
   } catch (error) {
