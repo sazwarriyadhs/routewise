@@ -28,7 +28,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { ReportGenerator } from '@/components/dashboard/report-generator';
 import { GPSUploader } from '@/components/dashboard/gps-uploader';
-
+import type { Coord } from '@/components/dashboard/simulated-vehicle';
 
 const socket: Socket = io('http://localhost:3001');
 
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(null);
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
-  const simulationIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [simulatedGpsData, setSimulatedGpsData] = React.useState<Coord[]>([]);
 
 
   React.useEffect(() => {
@@ -113,9 +113,6 @@ export default function DashboardPage() {
       socket.off('connect');
       socket.off('location:update');
       socket.disconnect();
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-      }
     }
   }, [selectedVehicleId, toast]);
   
@@ -230,52 +227,21 @@ export default function DashboardPage() {
     doc.save('route_optimization_report.pdf');
   };
 
-  const handleGpsDataLoaded = (data: { coordinates: [number, number][] }) => {
-    if (simulationIntervalRef.current) {
-      clearInterval(simulationIntervalRef.current);
-    }
-
-    if (!selectedVehicleId) {
+  const handleGpsDataLoaded = (data: Coord[]) => {
+    setSimulatedGpsData([]); // Clear previous simulation
+    if (selectedVehicleId) {
       toast({
+        title: "Simulation Started",
+        description: "Vehicle is now moving along the uploaded path.",
+      });
+      setSimulatedGpsData(data);
+    } else {
+       toast({
         title: "No Vehicle Selected",
         description: "Please select a vehicle to start the simulation.",
         variant: "destructive",
       });
-      return;
     }
-    
-    toast({
-      title: "Simulation Started",
-      description: "Vehicle is now moving along the uploaded path.",
-    });
-
-    let i = 0;
-    simulationIntervalRef.current = setInterval(() => {
-      const pos = data.coordinates[i % data.coordinates.length];
-      i++;
-
-      setVehicles(prev => {
-        const vehicle = prev[selectedVehicleId];
-        if (!vehicle) return prev;
-        
-        const newHistory = [...(vehicle.history || []), [pos[0], pos[1]]];
-        return {
-          ...prev,
-          [selectedVehicleId]: {
-            ...vehicle,
-            longitude: pos[0],
-            latitude: pos[1],
-            speed: 50, // Mock speed
-            status: 'Moving',
-            history: newHistory,
-          }
-        }
-      });
-      if (i >= data.coordinates.length) {
-         if(simulationIntervalRef.current) clearInterval(simulationIntervalRef.current);
-         toast({ title: "Simulation Finished" });
-      }
-    }, 2000);
   };
 
   return (
@@ -324,6 +290,7 @@ export default function DashboardPage() {
                   selectedVehicleId={selectedVehicleId}
                   onSelectVehicle={(id) => setSelectedVehicleId(id)}
                   showVehicleType={['Truck', 'Van', 'Car']}
+                  simulatedGpsData={simulatedGpsData}
                 />
             </div>
             <div className="h-full">

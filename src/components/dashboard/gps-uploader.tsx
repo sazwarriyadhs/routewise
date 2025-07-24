@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Upload } from 'lucide-react';
+import type { Coord } from './simulated-vehicle';
+
 
 interface GPSUploaderProps {
-  onDataLoaded: (data: any) => void;
+  onDataLoaded: (data: Coord[]) => void;
 }
 
 export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
@@ -34,12 +36,8 @@ export function GPSUploader({ onDataLoaded }: GPSUploaderProps) {
             'Invalid file format. Must be an array of objects with "lat" and "lon" properties.'
           );
         }
-
-        const transformedData = {
-          coordinates: data.map((item) => [item.lon, item.lat]),
-        };
-
-        onDataLoaded(transformedData);
+        
+        onDataLoaded(data);
       } catch (err: any) {
         toast({
             title: "File Read Error",

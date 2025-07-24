@@ -14,6 +14,8 @@ import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
 import Overlay from 'ol/Overlay';
 import 'ol/ol.css';
 import type { Vehicle } from '@/lib/types';
+import { MapContext } from '@/hooks/use-map';
+import SimulatedVehicle, { type Coord } from './simulated-vehicle';
 
 
 interface VehicleMapProps {
@@ -21,6 +23,7 @@ interface VehicleMapProps {
   selectedVehicleId: string | null;
   onSelectVehicle: (id: string) => void;
   showVehicleType: string[]; // filter by type (e.g. ["Truck"])
+  simulatedGpsData: Coord[];
 }
 
 export default function VehicleMap({
@@ -28,6 +31,7 @@ export default function VehicleMap({
   selectedVehicleId,
   onSelectVehicle,
   showVehicleType,
+  simulatedGpsData,
 }: VehicleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<Map | null>(null);
@@ -85,6 +89,14 @@ export default function VehicleMap({
   useEffect(() => {
     if (!map || !markerLayerRef.current || !routeLayerRef.current) return;
 
+    // Do not render live vehicles if a simulation is active
+    if(simulatedGpsData.length > 0) {
+      markerLayerRef.current.getSource().clear();
+      routeLayerRef.current.getSource().clear();
+      overlayRef.current?.setPosition(undefined);
+      return;
+    }
+
     const markerSource = markerLayerRef.current.getSource();
     const routeSource = routeLayerRef.current.getSource();
     markerSource.clear();
@@ -118,7 +130,7 @@ export default function VehicleMap({
       }
     });
 
-    map.on('singleclick', (evt) => {
+    const clickHandler = (evt: any) => {
       let featureFound = false;
       map.forEachFeatureAtPixel(evt.pixel, (feature) => {
         const vehicle = feature.get('vehicle');
@@ -140,11 +152,18 @@ export default function VehicleMap({
       if (!featureFound) {
         overlayRef.current?.setPosition(undefined);
       }
-    });
-  }, [vehicles, map, showVehicleType, selectedVehicleId, onSelectVehicle]);
+    };
+    
+    map.on('singleclick', clickHandler);
+
+    return () => {
+        map.un('singleclick', clickHandler)
+    }
+
+  }, [vehicles, map, showVehicleType, selectedVehicleId, onSelectVehicle, simulatedGpsData]);
 
   useEffect(() => {
-    if (!map || !selectedVehicleId) {
+    if (!map || !selectedVehicleId || simulatedGpsData.length > 0) {
         overlayRef.current?.setPosition(undefined);
         return;
     };
@@ -152,12 +171,15 @@ export default function VehicleMap({
     if (selected) {
       map.getView().animate({ center: fromLonLat([selected.longitude, selected.latitude]), duration: 500, zoom: 15 });
     }
-  }, [selectedVehicleId, vehicles, map]);
+  }, [selectedVehicleId, vehicles, map, simulatedGpsData]);
 
   return (
     <div className="w-full h-full relative">
-      <div ref={mapRef} className="w-full h-full" />
-      <div ref={popupRef} className="ol-popup" />
+      <MapContext.Provider value={map}>
+        <div ref={mapRef} className="w-full h-full" />
+        <div ref={popupRef} className="ol-popup" />
+        {simulatedGpsData.length > 0 && <SimulatedVehicle gpsData={simulatedGpsData} />}
+      </MapContext.Provider>
     </div>
   );
 }
