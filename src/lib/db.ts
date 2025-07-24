@@ -30,8 +30,8 @@ export const getPool = () => {
         const { PGHOST, PGUSER, PGPASSWORD, PGDATABASE, PGPORT } = process.env;
 
         if (!PGHOST || !PGUSER || !PGPASSWORD || !PGDATABASE || !PGPORT) {
-             console.error("\n\n\x1b[31mFATAL: Missing one or more required database environment variables.\x1b[0m");
-             console.error("Please ensure PGHOST, PGUSER, PGPASSWORD, PGDATABASE, and PGPORT are set in your environment file (e.g., .env or .env.local).");
+             const errorMessage = `FATAL: Missing one or more required database environment variables. Please ensure PGHOST, PGUSER, PGPASSWORD, PGDATABASE, and PGPORT are set in your environment file (e.g., .env or .env.local).`;
+             console.error("\n\n\x1b[31m" + errorMessage + "\x1b[0m");
              console.error("Example:");
              console.error("\x1b[32mPGHOST=localhost\x1b[0m");
              console.error("\x1b[32mPGUSER=postgres\x1b[0m");
@@ -39,7 +39,8 @@ export const getPool = () => {
              console.error("\x1b[32mPGDATABASE=route\x1b[0m");
              console.error("\x1b[32mPGPORT=5432\x1b[0m");
              console.error("\nAfter creating/updating the file, you may need to restart the development server.\n\n");
-             process.exit(1); // Exit the process if the database is not configured.
+             // Throw an error instead of exiting the process to allow for graceful handling by the framework.
+             throw new Error(errorMessage);
         }
         
         pool = new Pool({
@@ -50,3 +51,5 @@ export const getPool = () => {
             port: Number(PGPORT),
         });
     }
+    return pool;
+};
