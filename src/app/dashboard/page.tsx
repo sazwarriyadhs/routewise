@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockVehicles } from '@/lib/mock-data';
 import type { Vehicle } from '@/lib/types';
 import { VehicleDetails } from '@/components/dashboard/vehicle-details';
 import { useToast } from '@/hooks/use-toast';
@@ -40,22 +39,58 @@ const VehicleMap = dynamic(() => import('@/components/dashboard/vehicle-map'), {
 export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [vehicles, setVehicles] = React.useState<Record<string, Vehicle>>(() => {
-    const initialVehicles: Record<string, Vehicle> = {};
-    mockVehicles.forEach(v => initialVehicles[v.id] = v);
-    return initialVehicles;
-  });
-  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(
-    mockVehicles.length > 0 ? mockVehicles[0].id : null
-  );
+  const [vehicles, setVehicles] = React.useState<Record<string, Vehicle>>({});
+  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(null);
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
 
 
   React.useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const response = await fetch('/api/location');
+        if (!response.ok) {
+          throw new Error('Failed to fetch initial vehicle locations');
+        }
+        const initialVehicles: Vehicle[] = await response.json();
+        const vehicleMap: Record<string, Vehicle> = {};
+        initialVehicles.forEach(v => vehicleMap[v.id] = v);
+        setVehicles(vehicleMap);
+        if (initialVehicles.length > 0 && !selectedVehicleId) {
+            setSelectedVehicleId(initialVehicles[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to load initial data", error);
+        toast({
+          title: "Error",
+          description: "Could not load initial vehicle data.",
+          variant: "destructive"
+        })
+      }
+    };
+    
+    fetchInitialData();
+
     socket.on('connect', () => console.log('Dashboard connected to socket server'));
-    socket.on('location:update', (data: Vehicle) => {
-      setVehicles(prev => ({ ...prev, [data.id]: { ...(prev[data.id] || {}), ...data } }));
+    socket.on('location:update', (data: { vehicle_id: string, latitude: number, longitude: number, speed: number, status: Vehicle['status']}) => {
+      setVehicles(prev => {
+        const vehicle = prev[data.vehicle_id] || { id: data.vehicle_id, name: `Vehicle ${data.vehicle_id}` };
+        return { 
+          ...prev, 
+          [data.vehicle_id]: { 
+            ...vehicle, 
+            latitude: data.latitude, 
+            longitude: data.longitude,
+            speed: data.speed,
+            status: data.status,
+            // Mocking other properties for now
+            type: vehicle.type || 'Truck',
+            heading: vehicle.heading || 0,
+            fuelConsumption: vehicle.fuelConsumption || 0,
+            name: vehicle.name || `Vehicle ${data.vehicle_id}`,
+          } 
+        }
+      });
     });
 
     return () => {
@@ -63,7 +98,7 @@ export default function DashboardPage() {
       socket.off('location:update');
       socket.disconnect();
     }
-  }, []);
+  }, [selectedVehicleId, toast]);
   
   const selectedVehicle = selectedVehicleId ? vehicles[selectedVehicleId] : null;
 
@@ -209,18 +244,18 @@ export default function DashboardPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 p-4 overflow-hidden">
-            <div className="col-span-12 md:col-span-2 h-full">
+        <main className="flex-1 grid grid-cols-1 md:grid-cols-[280px_1fr_350px] gap-4 p-4 overflow-hidden">
+            <div className="h-full">
                  <VehicleList
                     vehicles={Object.values(vehicles)}
                     selectedVehicleId={selectedVehicleId}
                     onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
                 />
             </div>
-            <div className="col-span-12 md:col-span-7 h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
+            <div className="h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
                 <VehicleMap vehicle={selectedVehicle} optimizedRoute={optimizedRoute} />
             </div>
-            <div className="col-span-12 md:col-span-3 h-full">
+            <div className="h-full">
                 <Tabs defaultValue="details" className="h-full flex flex-col">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="details">Vehicle Details</TabsTrigger>

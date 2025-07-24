@@ -79,6 +79,8 @@ export default function VehicleMap({ vehicle, optimizedRoute }: VehicleMapProps)
         return;
     };
     
+    if (isNaN(vehicle.longitude) || isNaN(vehicle.latitude)) return;
+
     const lonLat = fromLonLat([vehicle.longitude, vehicle.latitude]);
 
     const iconFeature = new Feature({
@@ -101,7 +103,9 @@ export default function VehicleMap({ vehicle, optimizedRoute }: VehicleMapProps)
     popupOverlay.current.setPosition(lonLat);
     if (popupRef.current) {
       popupRef.current.innerHTML = `<div class="bg-card text-card-foreground p-2 text-sm shadow rounded-md border border-border">
-        <strong>${vehicle.name}</strong>
+        <strong>${vehicle.name}</strong><br/>
+        <p>Speed: ${vehicle.speed.toFixed(0)} km/h</p>
+        <p>Status: ${vehicle.status}</p>
       </div>`;
     }
 
@@ -141,7 +145,7 @@ export default function VehicleMap({ vehicle, optimizedRoute }: VehicleMapProps)
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
-      <div ref={popupRef} className="ol-popup absolute" />
+      <div ref={popupRef} className="ol-popup" />
     </div>
   );
 }
