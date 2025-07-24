@@ -1,64 +1,83 @@
 'use client';
 
-import * as React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import type { Vehicle } from '@/lib/types';
-import L from 'leaflet';
+import { useEffect, useRef, useState } from 'react';
+import Map from 'ol/Map';
+import View from 'ol/View';
+import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
+import { OSM } from 'ol/source';
+import VectorSource from 'ol/source/Vector';
+import { Point } from 'ol/geom';
+import Feature from 'ol/Feature';
+import { fromLonLat } from 'ol/proj';
+import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
+import { io } from 'socket.io-client';
+import 'ol/ol.css';
 
-// Fix for default icon issue with webpack
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-interface LiveMapProps {
-  vehicle: Vehicle | null;
+interface VehicleLocation {
+  id: string;
+  latitude: number;
+  longitude: number;
 }
 
-const MapUpdater = ({ vehicle }: { vehicle: Vehicle | null }) => {
-  const map = useMap();
-  React.useEffect(() => {
-    if (vehicle) {
-      map.setView([vehicle.latitude, vehicle.longitude], map.getZoom());
+const socket = io('http://localhost:3001');
+
+const LiveMap = () => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<Map | null>(null);
+  const vectorSource = useRef<VectorSource>(new VectorSource());
+  const [vehicles, setVehicles] = useState<Record<string, VehicleLocation>>({});
+
+  useEffect(() => {
+    // No need to fetch, the socket server is separate.
+    // The connection is established by creating the io() client.
+    
+    socket.on('connect', () => {
+      console.log('🛰️ Connected to socket server');
+    });
+
+    socket.on('location:update', (data: VehicleLocation) => {
+      setVehicles((prev) => ({ ...prev, [data.id]: data }));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mapRef.current && !mapInstance.current) {
+      mapInstance.current = new Map({
+        target: mapRef.current,
+        layers: [
+          new TileLayer({ source: new OSM() }),
+          new VectorLayer({ source: vectorSource.current }),
+        ],
+        view: new View({
+          center: fromLonLat([106.8456, -6.2088]), // Jakarta
+          zoom: 10,
+        }),
+      });
     }
-  }, [vehicle, map]);
-  return null;
-}
 
-export default function LiveMap({ vehicle }: LiveMapProps) {
-  const position: [number, number] = vehicle
-    ? [vehicle.latitude, vehicle.longitude]
-    : [34.0522, -118.2437]; // Default to LA if no vehicle
+    // update features
+    vectorSource.current.clear();
 
-  return (
-    <MapContainer
-      center={position}
-      zoom={14}
-      scrollWheelZoom={false}
-      style={{ height: '100%', width: '100%' }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <MapUpdater vehicle={vehicle} />
-      {vehicle && (
-        <Marker position={[vehicle.latitude, vehicle.longitude]}>
-          <Popup>
-            <b>{vehicle.name}</b>
-            <br />
-            Status: {vehicle.status}
-            <br />
-            Speed: {vehicle.speed} km/h
-          </Popup>
-        </Marker>
-      )}
-    </MapContainer>
-  );
-}
+    Object.values(vehicles).forEach(vehicle => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([vehicle.longitude, vehicle.latitude])),
+      });
+      feature.setStyle(new Style({
+        image: new CircleStyle({
+          radius: 7,
+          fill: new Fill({ color: 'hsl(var(--primary))' }),
+          stroke: new Stroke({ color: '#ffffff', width: 2 }),
+        }),
+      }));
+      vectorSource.current.addFeature(feature);
+    });
+  }, [vehicles]);
+
+  return <div ref={mapRef} className="w-full h-full" />;
+};
+
+export default LiveMap;

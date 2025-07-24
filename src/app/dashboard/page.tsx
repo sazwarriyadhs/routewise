@@ -159,7 +159,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                <LiveMap vehicle={selectedVehicle} />
+                <LiveMap />
               </div>
             </CardContent>
           </div>
