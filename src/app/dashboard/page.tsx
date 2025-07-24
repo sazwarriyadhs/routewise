@@ -7,13 +7,6 @@ import { LogOut, User, Zap } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,22 +14,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockVehicles } from '@/lib/mock-data';
-import type { Vehicle, OptimizedRouteResult } from '@/lib/types';
-import { RouteOptimizer } from '@/components/dashboard/route-optimizer';
+import type { Vehicle } from '@/lib/types';
 import { VehicleDetails } from '@/components/dashboard/vehicle-details';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
-import { generatePdfReport } from '@/lib/report-generator';
 import { VehicleList } from '@/components/dashboard/vehicle-list';
 import { io, Socket } from 'socket.io-client';
 
 const socket: Socket = io('http://localhost:3001');
 
-const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), {
+const VehicleMap = dynamic(() => import('@/components/dashboard/vehicle-map'), {
   ssr: false,
   loading: () => <Skeleton className="h-full w-full" />,
 });
@@ -49,11 +38,9 @@ export default function DashboardPage() {
     mockVehicles.forEach(v => initialVehicles[v.id] = v);
     return initialVehicles;
   });
-  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(
+  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string>(
     mockVehicles[0].id
   );
-  const [optimizationResult, setOptimizationResult] =
-    React.useState<OptimizedRouteResult | null>(null);
 
   React.useEffect(() => {
     socket.on('connect', () => console.log('Dashboard connected to socket server'));
@@ -79,29 +66,13 @@ export default function DashboardPage() {
     router.replace('/');
   };
 
-  const handleGenerateReport = () => {
-    if (optimizationResult && selectedVehicle) {
-      generatePdfReport(optimizationResult, selectedVehicle);
-      toast({
-        title: 'Report Generated',
-        description: 'The PDF report has been downloaded.',
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Cannot Generate Report',
-        description: 'Please optimize a route and select a vehicle first.',
-      });
-    }
-  };
-
   return (
     <div className="flex h-screen w-full bg-muted/40 flex-col">
        <header className="flex h-16 items-center justify-between gap-4 border-b bg-background px-6 shrink-0">
           <div className="flex items-center gap-4">
             <Icons.Logo className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-semibold">
-              Real-time Route Optimization
+              RouteWise
             </h1>
           </div>
           <DropdownMenu>
@@ -133,55 +104,13 @@ export default function DashboardPage() {
                     vehicles={Object.values(vehicles)}
                     selectedVehicleId={selectedVehicleId}
                     onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
-                    isCollapsed={false}
                 />
             </div>
             <div className="col-span-7 h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
-                <LiveMap />
+                <VehicleMap vehicle={selectedVehicle} />
             </div>
             <div className="col-span-3 h-full">
-                 <Tabs defaultValue="details" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="details">Vehicle Details</TabsTrigger>
-                        <TabsTrigger value="optimize">
-                        <Zap className="mr-2 h-4 w-4" /> AI Optimize
-                        </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="details" className="flex-1">
-                        <VehicleDetails vehicle={selectedVehicle} />
-                    </TabsContent>
-                    <TabsContent value="optimize" className="flex-1">
-                        <RouteOptimizer
-                        vehicle={selectedVehicle}
-                        onOptimizationResult={setOptimizationResult}
-                        />
-                        {optimizationResult && (
-                        <Card className="mt-4">
-                            <CardHeader>
-                            <CardTitle>Optimization Complete</CardTitle>
-                            <CardDescription>AI-powered route suggestion.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4 text-sm">
-                            <div>
-                                <h4 className="font-semibold">Suggested Route</h4>
-                                <p className="text-muted-foreground">{optimizationResult.optimizedRoute}</p>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold">Est. Fuel Savings</h4>
-                                <Badge variant="secondary">{optimizationResult.estimatedFuelSavings.toFixed(2)} Liters</Badge>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold">Reasoning</h4>
-                                <p className="text-muted-foreground">{optimizationResult.reasoning}</p>
-                            </div>
-                            <Button onClick={handleGenerateReport} className="w-full mt-4">
-                                Generate PDF Report
-                            </Button>
-                            </CardContent>
-                        </Card>
-                        )}
-                    </TabsContent>
-                </Tabs>
+                <VehicleDetails vehicle={selectedVehicle} />
             </div>
         </main>
     </div>
