@@ -103,7 +103,7 @@ export default function LandingMap() {
 
         newFeature.setStyle(new Style({
             image: new Icon({
-                src: 'https://openlayers.org/en/latest/examples/data/icon.png',
+                src: '/image/truck-icon.png',
                 scale: 0.5,
                 anchor: [0.5, 1],
             })

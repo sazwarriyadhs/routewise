@@ -12,7 +12,7 @@ import { Vector as VectorLayer } from 'ol/layer'
 import { Vector as VectorSource } from 'ol/source'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
-import { Style, Circle as CircleStyle, Fill, Stroke } from 'ol/style'
+import { Style, Circle as CircleStyle, Fill, Stroke, Icon } from 'ol/style'
 
 const socket = io('http://localhost:3001') // Use port 3001 for our socket server
 
@@ -46,11 +46,10 @@ export default function MapPage() {
     })
     initialFeature.setStyle(
       new Style({
-        image: new CircleStyle({
-            radius: 7,
-            fill: new Fill({ color: 'hsl(var(--primary))' }),
-            stroke: new Stroke({ color: '#ffffff', width: 2 }),
-        })
+        image: new Icon({
+          src: '/image/truck-icon.png',
+          scale: 0.5,
+        }),
       }),
     )
     marker.current = initialFeature

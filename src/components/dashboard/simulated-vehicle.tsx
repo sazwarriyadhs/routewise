@@ -33,7 +33,7 @@ export default function SimulatedVehicle({ gpsData }: SimulatedVehicleProps) {
     vehicleFeature.setStyle(
       new Style({
         image: new Icon({
-          src: 'https://openlayers.org/en/latest/examples/data/icon.png', // Using a placeholder icon
+          src: '/image/truck-icon.png',
           scale: 0.5,
         }),
       })
