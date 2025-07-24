@@ -6,11 +6,12 @@
  */
 
 import { io } from 'socket.io-client';
-import type { VehicleMaster } from './types';
+import type { Vehicle, VehicleMaster } from './types';
+import { mockVehicles } from './mock-data';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local' });
 
 const socket = io('http://localhost:3001');
 
@@ -69,14 +70,17 @@ const sendLocationUpdate = async (vehicle: SimulatedVehicle) => {
             longitude: vehicle.longitude,
             speed: vehicle.speed,
         };
-        await axios.post(`${API_BASE_URL}/location`, payload);
+        // This may fail if the server is down, but we want the simulation to continue
+        await axios.post(`${API_BASE_URL}/location`, payload).catch(() => {
+            // console.warn(`Could not persist location for ${vehicle.id}, server may be down.`);
+        });
         
-        // The socket now includes the status
-        socket.emit('location:update', {...payload, status: vehicle.status });
+        // The socket update is the most important part for the UI
+        socket.emit('location:update', {...payload, status: vehicle.status, name: vehicle.name, type: vehicle.type });
         
         console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(4)}, ${vehicle.longitude.toFixed(4)}) Speed: ${vehicle.speed.toFixed(0)}km/h Status: ${vehicle.status}`);
     } catch (error: any) {
-        console.error(`❌ Failed to send update for ${vehicle.id}:`, error.response?.data?.message || error.message);
+        console.error(`❌ Failed to send update for ${vehicle.id}:`, error.message);
     }
 }
 
@@ -101,35 +105,37 @@ socket.on('disconnect', () => {
 
 
 const initializeSimulator = async () => {
+    let masterVehicles: VehicleMaster[] = [];
     try {
         console.log('Initializing database schema...');
         await axios.post(`${API_BASE_URL}/db/init`);
         console.log('Database schema initialized.');
 
         console.log('Fetching vehicle list for simulation...');
-        const response = await axios.get(`${API_BÁSE_URL}/vehicles`);
-        const masterVehicles: VehicleMaster[] = response.data;
-
-        if (masterVehicles.length === 0) {
-            console.warn('⚠️ No vehicles found in the database. Please add vehicles via the dashboard to start the simulation.');
-            return;
-        }
-
-        vehicles = masterVehicles.map(v => ({
-            ...v,
-            latitude: -6.2, // Default start lat
-            longitude: 106.8, // Default start lon
-            speed: Math.random() * 60,
-            heading: Math.random() * 360,
-            status: 'Moving',
-        }));
-
-        console.log(`🚦 Loaded ${vehicles.length} vehicles. Starting simulation...`);
+        const response = await axios.get(`${API_BASE_URL}/vehicles`);
+        masterVehicles = response.data;
 
     } catch(e: any) {
-        console.error('❌ Simulator initialization failed:', e.response?.data?.message || e.message)
-        console.error('Please ensure the backend server is running and the database is accessible.');
+        console.error('❌ Simulator database connection failed:', e.message)
+        console.warn('⚠️ Could not connect to the database. Falling back to mock vehicle data.');
+        masterVehicles = mockVehicles.map(({id, name, type}) => ({id, name, type}));
     }
+
+    if (masterVehicles.length === 0) {
+        console.error('❌ No vehicles found in the database or mock data. Please add vehicles to start the simulation.');
+        return;
+    }
+
+    vehicles = masterVehicles.map(v => ({
+        ...v,
+        latitude: -6.2 + (Math.random() - 0.5) * 0.2, // Start near Jakarta with some randomness
+        longitude: 106.8 + (Math.random() - 0.5) * 0.2,
+        speed: Math.random() * 60,
+        heading: Math.random() * 360,
+        status: 'Moving',
+    }));
+
+    console.log(`🚦 Loaded ${vehicles.length} vehicles. Starting simulation...`);
 };
 
 initializeSimulator();

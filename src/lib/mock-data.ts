@@ -11,6 +11,7 @@ export const mockVehicles: Vehicle[] = [
     heading: 45,
     fuelConsumption: 25.5,
     status: 'Moving',
+    timestamp: new Date().toISOString(),
   },
   {
     id: 'V002',
@@ -22,6 +23,7 @@ export const mockVehicles: Vehicle[] = [
     heading: 180,
     fuelConsumption: 12.1,
     status: 'Idle',
+    timestamp: new Date().toISOString(),
   },
   {
     id: 'V003',
@@ -33,6 +35,7 @@ export const mockVehicles: Vehicle[] = [
     heading: 270,
     fuelConsumption: 13.2,
     status: 'Moving',
+    timestamp: new Date().toISOString(),
   },
   {
     id: 'V004',
@@ -44,6 +47,7 @@ export const mockVehicles: Vehicle[] = [
     heading: 90,
     fuelConsumption: 8.5,
     status: 'Moving',
+    timestamp: new Date().toISOString(),
   },
   {
     id: 'V005',
@@ -55,5 +59,6 @@ export const mockVehicles: Vehicle[] = [
     heading: 0,
     fuelConsumption: 0,
     status: 'Offline',
+    timestamp: new Date().toISOString(),
   },
 ];

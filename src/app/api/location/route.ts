@@ -65,6 +65,8 @@ export async function GET() {
         vl.longitude,
         vl.speed,
         vl.timestamp,
+        0 as heading, 
+        0 as "fuelConsumption",
         CASE 
           WHEN vl.timestamp > NOW() - INTERVAL '5 minutes' THEN 
             CASE 
