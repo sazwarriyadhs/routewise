@@ -32,3 +32,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        vl.vehicle_id,
+        vl.latitude,
+        vl.longitude,
+        vl.speed,
+        vl.timestamp,
+        CASE 
+          WHEN vl.timestamp > NOW() - INTERVAL '5 minutes' THEN 
+            CASE 
+              WHEN vl.speed > 2 THEN 'Moving'
+              ELSE 'Idle'
+            END
+          ELSE 'Offline'
+        END as status
+      FROM vehicle_locations vl;
+    `);
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error('Failed to fetch locations:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}

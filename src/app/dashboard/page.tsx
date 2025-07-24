@@ -152,7 +152,8 @@ export default function DashboardPage() {
     const tableRows: any[][] = [];
 
     route.steps.forEach((step: any) => {
-        const vehicle = step.type === 'start' || step.type === 'end' ? activeVehicles[0] : activeVehicles.find(v => v.id === optimizedRoute.jobs[step.job -1]?.description);
+        const job = optimizedRoute.jobs?.find((j: any) => j.id === step.job);
+        const vehicle = activeVehicles.find(v => job && v.location[0] === job.location[0] && v.location[1] === job.location[1]);
 
         const row = [
             step.id,
