@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { generatePdfReport } from '@/lib/report-generator';
+import { VehicleList } from '@/components/dashboard/vehicle-list';
 
 const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), {
   ssr: false,
@@ -106,26 +107,12 @@ export default function DashboardPage() {
           </Button>
         </div>
         <ScrollArea className="flex-1">
-          <nav className="flex flex-col gap-1 p-2">
-            <h3 className={cn("px-2 py-2 text-xs font-medium text-muted-foreground", isSidebarCollapsed && "hidden")}>
-              Vehicles
-            </h3>
-            {vehicles.map((vehicle) => (
-              <Button
-                key={vehicle.id}
-                variant={selectedVehicle?.id === vehicle.id ? 'secondary' : 'ghost'}
-                className={cn(
-                  'justify-start gap-2',
-                  isSidebarCollapsed && 'h-10 w-10 justify-center p-0'
-                )}
-                onClick={() => setSelectedVehicle(vehicle)}
-                title={vehicle.name}
-              >
-                <Truck className="h-4 w-4" />
-                {!isSidebarCollapsed && <span className="truncate">{vehicle.name}</span>}
-              </Button>
-            ))}
-          </nav>
+          <VehicleList
+            vehicles={vehicles}
+            selectedVehicle={selectedVehicle}
+            onSelectVehicle={setSelectedVehicle}
+            isCollapsed={isSidebarCollapsed}
+          />
         </ScrollArea>
         <div className="mt-auto border-t p-2">
           <DropdownMenu>

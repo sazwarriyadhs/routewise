@@ -1,12 +1,12 @@
 import { Server } from "socket.io";
 
-const io = new Server(3001, {
+const io = new Server(4000, {
   cors: {
     origin: "*",
   },
 });
 
-console.log("🔌 New Socket.io server listening on port 3001");
+console.log("🔌 New Socket.io server listening on port 4000");
 
 io.on("connection", (socket) => {
   console.log("🚛 Client connected:", socket.id);

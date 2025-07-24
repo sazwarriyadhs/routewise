@@ -10,7 +10,7 @@ import { io } from 'socket.io-client';
 const vehicle = { id: 'TRUCK-001', latitude: -6.2, longitude: 106.8 };
 
 
-const socket = io('http://localhost:3001'); // Connect to our socket server on port 3001
+const socket = io('http://localhost:4000'); // Connect to our socket server on port 4000
 
 socket.on('connect', () => {
   console.log('🛰️ Simulator connected to server');
