@@ -29,22 +29,28 @@ interface RouteLog {
 interface VehicleMapProps {
     vehicles: Vehicle[];
     routes: RouteLog[];
+    optimizedRoute: any;
 }
 
 
-export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
+export default function VehicleMap({ vehicles, routes, optimizedRoute }: VehicleMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [map, setMap] = useState<Map | null>(null);
   const [showRoutes, setShowRoutes] = useState(true);
   const routeLayersRef = useRef<VectorLayer<any>[]>([]);
   const vehicleLayerRef = useRef<VectorLayer<any> | null>(null);
+  const optimizedRouteLayerRef = useRef<VectorLayer<any> | null>(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
 
     const vehicleSource = new VectorSource();
-    const vehicleLayer = new VectorLayer({ source: vehicleSource });
+    const vehicleLayer = new VectorLayer({ source: vehicleSource, zIndex: 10 });
     vehicleLayerRef.current = vehicleLayer;
+
+    const optimizedRouteSource = new VectorSource();
+    const optimizedRouteLayer = new VectorLayer({ source: optimizedRouteSource, zIndex: 5 });
+    optimizedRouteLayerRef.current = optimizedRouteLayer;
 
     const initialMap = new Map({
       target: mapRef.current,
@@ -53,6 +59,7 @@ export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
           source: new OSM(),
         }),
         vehicleLayer,
+        optimizedRouteLayer,
       ],
       view: new View({
         center: fromLonLat([106.816666, -6.2]),
@@ -91,7 +98,7 @@ export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
   }, [vehicles, map])
 
 
-  // Effect to draw/update routes
+  // Effect to draw/update historical routes
   useEffect(() => {
     if (!map) return;
     
@@ -99,12 +106,12 @@ export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
     routeLayersRef.current.forEach((layer) => map.removeLayer(layer));
     routeLayersRef.current = [];
 
-    if (!showRoutes || !routes) {
+    if (!showRoutes || !routes || routes.length === 0) {
       return;
     }
     
     const newRouteLayers: VectorLayer<any>[] = [];
-    const colors = ["#FF0000", "#00AA00", "#0000FF", "#FF00FF", "#FF8800"];
+    const colors = ["#FF0000", "#00AA00", "#0000FF", "#FF00FF", "#FF8800", "#444444"];
     
     const routesByVehicle = routes.reduce((acc, log) => {
         if (!acc[log.vehicle_id]) {
@@ -126,6 +133,7 @@ export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
             style: new Style({
                 stroke: new Stroke({ color: colors[index % colors.length], width: 3 }),
             }),
+            zIndex: 1,
         });
         map.addLayer(routeLayer);
         newRouteLayers.push(routeLayer);
@@ -134,6 +142,28 @@ export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
     routeLayersRef.current = newRouteLayers;
 
   }, [showRoutes, routes, map]);
+
+    // Effect to draw optimized route
+    useEffect(() => {
+        if (!map || !optimizedRouteLayerRef.current) return;
+        const source = optimizedRouteLayerRef.current.getSource();
+        source.clear();
+
+        if (optimizedRoute && optimizedRoute.routes && optimizedRoute.routes.length > 0) {
+            const route = optimizedRoute.routes[0];
+            if (route.geometry) {
+                 const coordinates = route.geometry.coordinates.map((coord: [number, number]) => fromLonLat(coord));
+                 const line = new LineString(coordinates);
+                 const feature = new Feature({ geometry: line });
+                 feature.setStyle(new Style({
+                    stroke: new Stroke({ color: 'hsl(var(--accent))', width: 6, lineDash: [8, 8] }),
+                 }));
+                 source.addFeature(feature);
+                 map.getView().fit(line.getExtent(), { padding: [50, 50, 50, 50], duration: 1000 });
+            }
+        }
+    }, [optimizedRoute, map])
+
 
   return (
     <div className="h-full w-full flex flex-col">

@@ -35,7 +35,13 @@ const optimizeRouteFlow = ai.defineFlow(
   async (input) => {
     const apiKey = process.env.ORS_API_KEY;
     if (!apiKey || apiKey === 'your-api-key-here') {
-        throw new Error('OpenRouteService API key is not configured. Please add it to your .env file.');
+        // Instead of throwing, return a structured error object that the frontend can handle gracefully.
+        return { 
+            error: {
+                code: 'API_KEY_MISSING',
+                message: 'OpenRouteService API key is not configured. Please add it to your .env file.' 
+            }
+        };
     }
     
     const orsRequest = {
@@ -66,7 +72,13 @@ const optimizeRouteFlow = ai.defineFlow(
     if (!response.ok) {
         const errorText = await response.text();
         console.error("ORS API Error:", errorText);
-        throw new Error(`OpenRouteService API error: ${response.statusText}`);
+        // Return a structured error for the frontend.
+        return {
+            error: {
+                code: 'API_ERROR',
+                message: `OpenRouteService API error: ${response.statusText}. Details: ${errorText}`
+            }
+        };
     }
 
     return await response.json();

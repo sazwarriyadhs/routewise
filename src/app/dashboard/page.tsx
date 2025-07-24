@@ -65,6 +65,11 @@ export default function DashboardPage() {
         }
         const initialVehicles: any[] = await response.json();
 
+        if (!Array.isArray(initialVehicles)) {
+           setInitialLoadingError("Received invalid data from the server. Please check the API.");
+           return;
+        }
+
         if (initialVehicles.length === 0) {
           setInitialLoadingError("No vehicle data found. Please run the vehicle simulator to populate the database.");
           return;
@@ -72,6 +77,7 @@ export default function DashboardPage() {
 
         const vehicleMap: Record<string, Vehicle> = {};
         initialVehicles.forEach(v => {
+            if (!v.vehicle_id) return;
             vehicleMap[v.vehicle_id] = {
                 id: v.vehicle_id,
                 name: `Vehicle ${v.vehicle_id}`,
@@ -130,9 +136,8 @@ export default function DashboardPage() {
     return () => {
       socket.off('connect');
       socket.off('location:update');
-      socket.disconnect();
     }
-  }, [selectedVehicleId, toast]);
+  }, [toast]);
   
   React.useEffect(() => {
     const fetchFilteredRoutes = async () => {
@@ -190,6 +195,11 @@ export default function DashboardPage() {
             })),
             startLocation: [activeVehicles[0].longitude, activeVehicles[0].latitude],
         });
+
+        if (result.error) {
+            throw new Error(result.error.message);
+        }
+
         setOptimizedRoute(result);
         toast({
             title: "Route Optimized",
@@ -207,7 +217,15 @@ export default function DashboardPage() {
   }
 
   const handleExportPdf = () => {
-    if (!optimizedRoute) return;
+    if (!optimizedRoute || !optimizedRoute.routes || !optimizedRoute.routes[0]) {
+        toast({
+            title: "No Route Data",
+            description: "Cannot export PDF without a generated route.",
+            variant: "destructive",
+        });
+        return;
+    }
+
 
     const doc = new jsPDF();
     const route = optimizedRoute.routes?.[0];
@@ -331,6 +349,7 @@ export default function DashboardPage() {
                   <VehicleMap 
                     vehicles={Object.values(vehicles)}
                     routes={filteredRoutes}
+                    optimizedRoute={optimizedRoute}
                   />
               )}
             </div>
