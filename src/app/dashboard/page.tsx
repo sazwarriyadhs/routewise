@@ -29,6 +29,8 @@ import 'jspdf-autotable';
 import { ReportGenerator } from '@/components/dashboard/report-generator';
 import { GPSUploader } from '@/components/dashboard/gps-uploader';
 import type { Coord } from '@/components/dashboard/simulated-vehicle';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 const socket: Socket = io('http://localhost:3001');
 
@@ -45,6 +47,7 @@ export default function DashboardPage() {
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
   const [simulatedGpsData, setSimulatedGpsData] = React.useState<Coord[]>([]);
+  const [initialLoadingError, setInitialLoadingError] = React.useState<string | null>(null);
 
 
   React.useEffect(() => {
@@ -52,9 +55,16 @@ export default function DashboardPage() {
       try {
         const response = await fetch('/api/location');
         if (!response.ok) {
-          throw new Error('Failed to fetch initial vehicle locations');
+          const errorBody = await response.text();
+          throw new Error(`Failed to fetch initial vehicle locations. Status: ${response.status}. Body: ${errorBody}`);
         }
         const initialVehicles: any[] = await response.json();
+
+        if (initialVehicles.length === 0) {
+          setInitialLoadingError("No vehicle data found. Please run the vehicle simulator to populate the database.");
+          return;
+        }
+
         const vehicleMap: Record<string, Vehicle> = {};
         initialVehicles.forEach(v => {
             vehicleMap[v.vehicle_id] = {
@@ -74,11 +84,13 @@ export default function DashboardPage() {
         if (initialVehicles.length > 0 && !selectedVehicleId) {
             setSelectedVehicleId(initialVehicles[0].vehicle_id);
         }
-      } catch (error) {
+        setInitialLoadingError(null);
+      } catch (error: any) {
         console.error("Failed to load initial data", error);
+        setInitialLoadingError("Could not connect to the vehicle data service. Please ensure the vehicle simulator is running by executing `npm run simulate` in your terminal.");
         toast({
-          title: "Error",
-          description: "Could not load initial vehicle data.",
+          title: "Error Loading Data",
+          description: "Could not load initial vehicle data. Please start the simulator.",
           variant: "destructive"
         })
       }
@@ -88,6 +100,7 @@ export default function DashboardPage() {
 
     socket.on('connect', () => console.log('Dashboard connected to socket server'));
     socket.on('location:update', (data: { vehicle_id: string, latitude: number, longitude: number, speed: number, status: Vehicle['status']}) => {
+      setInitialLoadingError(null); // Clear error on first successful update
       setVehicles(prev => {
         const vehicle = prev[data.vehicle_id] || { id: data.vehicle_id, name: `Vehicle ${data.vehicle_id}` };
         const newHistory = [...(vehicle.history || []), [data.longitude, data.latitude]];
@@ -285,13 +298,28 @@ export default function DashboardPage() {
                 />
             </div>
             <div className="h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
-                <VehicleMap 
-                  vehicles={Object.values(vehicles)}
-                  selectedVehicleId={selectedVehicleId}
-                  onSelectVehicle={(id) => setSelectedVehicleId(id)}
-                  showVehicleType={['Truck', 'Van', 'Car']}
-                  simulatedGpsData={simulatedGpsData}
-                />
+              {initialLoadingError ? (
+                  <div className="flex h-full w-full items-center justify-center p-8">
+                    <Alert variant="destructive">
+                      <Terminal className="h-4 w-4" />
+                      <AlertTitle>Action Required</AlertTitle>
+                      <AlertDescription>
+                        {initialLoadingError}
+                        <code className="mt-4 block rounded bg-muted p-2 text-xs text-foreground">
+                          npm run simulate
+                        </code>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                ) : (
+                  <VehicleMap 
+                    vehicles={Object.values(vehicles)}
+                    selectedVehicleId={selectedVehicleId}
+                    onSelectVehicle={(id) => setSelectedVehicleId(id)}
+                    showVehicleType={['Truck', 'Van', 'Car']}
+                    simulatedGpsData={simulatedGpsData}
+                  />
+              )}
             </div>
             <div className="h-full">
                 <Tabs defaultValue="details" className="h-full flex flex-col">
