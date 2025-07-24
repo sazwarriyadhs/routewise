@@ -21,9 +21,13 @@ interface LiveMapProps {
   vehicle: Vehicle | null;
 }
 
-const ChangeView = ({ center, zoom }: { center: [number, number], zoom: number }) => {
+const MapUpdater = ({ vehicle }: { vehicle: Vehicle | null }) => {
   const map = useMap();
-  map.setView(center, zoom);
+  React.useEffect(() => {
+    if (vehicle) {
+      map.setView([vehicle.latitude, vehicle.longitude], map.getZoom());
+    }
+  }, [vehicle, map]);
   return null;
 }
 
@@ -32,21 +36,24 @@ export default function LiveMap({ vehicle }: LiveMapProps) {
     ? [vehicle.latitude, vehicle.longitude]
     : [34.0522, -118.2437]; // Default to LA if no vehicle
 
-  const mapKey = vehicle ? `${vehicle.id}-${position.join(',')}` : 'default';
-
   return (
     <MapContainer
-      key={mapKey}
       center={position}
       zoom={14}
       scrollWheelZoom={false}
       style={{ height: '100%', width: '100%' }}
+      whenCreated={() => {
+        // This is a workaround for a bug in react-leaflet where the map is not properly sized on initial load.
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 200);
+      }}
     >
-      <ChangeView center={position} zoom={14} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <MapUpdater vehicle={vehicle} />
       {vehicle && (
         <Marker position={[vehicle.latitude, vehicle.longitude]}>
           <Popup>
