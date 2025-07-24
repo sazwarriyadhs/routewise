@@ -26,21 +26,29 @@ const getPool = () => {
             console.warn("No .env or .env.local file found. The application may not be able to connect to the database.");
         }
 
-        const connectionString = process.env.DATABASE_URL;
+        const { PGHOST, PGUSER, PGPASSWORD, PGDATABASE, PGPORT } = process.env;
 
-        if (!connectionString) {
-             console.error("\n\n\x1b[31mFATAL: DATABASE_URL is not set in your environment.\x1b[0m");
-             console.error("Please create a `.env.local` file in the root of your project and add the following line:");
-             console.error("\x1b[32mDATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/route\"\x1b[0m");
-             console.error("After creating the file, you may need to restart the development server.\n\n");
+        if (!PGHOST || !PGUSER || !PGPASSWORD || !PGDATABASE || !PGPORT) {
+             console.error("\n\n\x1b[31mFATAL: Missing one or more required database environment variables.\x1b[0m");
+             console.error("Please ensure PGHOST, PGUSER, PGPASSWORD, PGDATABASE, and PGPORT are set in your environment file (e.g., .env.local).");
+             console.error("Example:");
+             console.error("\x1b[32mPGHOST=localhost\x1b[0m");
+             console.error("\x1b[32mPGUSER=postgres\x1b[0m");
+             console.error("\x1b[32mPGPASSWORD=postgres\x1b[0m");
+             console.error("\x1b[32mPGDATABASE=route\x1b[0m");
+             console.error("\x1b[32mPGPORT=5432\x1b[0m");
+             console.error("\nAfter creating/updating the file, you may need to restart the development server.\n\n");
              process.exit(1);
         }
         
         pool = new Pool({
-            connectionString: connectionString,
+            host: PGHOST,
+            user: PGUSER,
+            password: PGPASSWORD,
+            database: PGDATabase,
+            port: parseInt(PGPORT, 10),
         });
     }
     return pool;
 }
 
-export { getPool as pool };
