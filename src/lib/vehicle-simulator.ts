@@ -5,50 +5,32 @@
  */
 
 import { io } from 'socket.io-client';
-import { mockVehicles } from './mock-data';
-import type { Vehicle } from './types';
 
-const socket = io('http://localhost:3001');
+// Dummy data awal: posisi Jakarta
+const vehicles = [
+  { id: 'TRUCK-001', latitude: -6.2, longitude: 106.8 },
+  { id: 'TRUCK-002', latitude: -6.25, longitude: 106.75 },
+];
 
-const vehicles: Vehicle[] = JSON.parse(JSON.stringify(mockVehicles)); // Deep copy
+const socket = io('http://localhost:3001'); // Connect to our socket server on port 3001
 
 socket.on('connect', () => {
-  console.log('✅ Simulator connected to socket server');
-  console.log('🚀 Starting vehicle simulation...');
-  
-  // Start simulation for all vehicles
-  vehicles.forEach(vehicle => {
-    if (vehicle.status !== 'Offline') {
-      setInterval(() => {
-        simulateMovement(vehicle);
-        // Use the vehicle id as the unique identifier for the location update
-        socket.emit('location:update', {
-          id: vehicle.id,
-          latitude: vehicle.latitude,
-          longitude: vehicle.longitude,
-        });
-      }, 2000 + Math.random() * 2000); // Update every 2-4 seconds
-    }
-  });
+  console.log('🛰️ Simulator connected to server');
+
+  setInterval(() => {
+    vehicles.forEach(vehicle => {
+      // Simulasi pergerakan acak
+      vehicle.latitude += (Math.random() - 0.5) * 0.001;
+      vehicle.longitude += (Math.random() - 0.5) * 0.001;
+
+      socket.emit('location:update', vehicle);
+      console.log(`📍 Sent ${vehicle.id}: (${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)})`);
+    })
+  }, 2000); // Update every 2 seconds for a more fluid feel
 });
 
 socket.on('disconnect', () => {
   console.log('❌ Simulator disconnected from socket server');
 });
-
-function simulateMovement(vehicle: Vehicle) {
-  const latChange = (Math.random() - 0.5) * 0.001; // Small random change
-  const lonChange = (Math.random() - 0.5) * 0.001;
-
-  vehicle.latitude += latChange;
-  vehicle.longitude += lonChange;
-
-  // Keep within a reasonable bounding box around the initial area
-  const initial = mockVehicles.find(v => v.id === vehicle.id);
-  if (initial) {
-      if (Math.abs(vehicle.latitude - initial.latitude) > 0.1) vehicle.latitude = initial.latitude;
-      if (Math.abs(vehicle.longitude - initial.longitude) > 0.1) vehicle.longitude = initial.longitude;
-  }
-}
 
 console.log('🚦 Initializing vehicle simulator...');
