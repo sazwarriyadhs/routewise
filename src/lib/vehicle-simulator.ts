@@ -25,7 +25,7 @@ interface SimulatedVehicle extends VehicleMaster {
 
 let vehicles: SimulatedVehicle[] = [];
 
-const API_BASE_URL = 'http://localhost:9002/api';
+const API_BASE_URL = 'http://localhost:9003/api';
 
 const updateVehicle = (vehicle: SimulatedVehicle): SimulatedVehicle => {
   if (vehicle.status === 'Offline') {
@@ -107,7 +107,7 @@ const initializeSimulator = async () => {
         console.log('Database schema initialized.');
 
         console.log('Fetching vehicle list for simulation...');
-        const response = await axios.get(`${API_BASE_URL}/vehicles`);
+        const response = await axios.get(`${API_BÁSE_URL}/vehicles`);
         const masterVehicles: VehicleMaster[] = response.data;
 
         if (masterVehicles.length === 0) {
