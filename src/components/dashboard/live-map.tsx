@@ -9,7 +9,7 @@ import { Point, LineString } from 'ol/geom';
 import Feature from 'ol/Feature';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { Style, Circle as CircleStyle, Fill, Stroke, Text, Icon } from 'ol/style';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import 'ol/ol.css';
 
 import { getRouteFromORS } from '@/app/actions';
@@ -19,14 +19,9 @@ import { Button } from '@/components/ui/button';
 import { X, MapPin, Route, Trash2, Loader2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
+import type { Vehicle } from '@/lib/types';
 
-interface VehicleLocation {
-  id: string;
-  latitude: number;
-  longitude: number;
-}
-
-const socket = io('http://localhost:3001');
+const socket: Socket = io('http://localhost:3001');
 
 const LiveMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -35,7 +30,7 @@ const LiveMap = () => {
   const routeVectorSource = useRef(new VectorSource());
   const waypointVectorSource = useRef(new VectorSource());
 
-  const [vehicles, setVehicles] = useState<Record<string, VehicleLocation>>({});
+  const [vehicles, setVehicles] = useState<Record<string, Feature>>({});
   const [searchId, setSearchId] = useState('');
   const [waypoints, setWaypoints] = useState<number[][]>([]);
   const [totalDistance, setTotalDistance] = useState<number | null>(null);
@@ -99,11 +94,43 @@ const LiveMap = () => {
   
   useEffect(() => {
     socket.on('connect', () => console.log('🛰️ Connected to socket server'));
-    socket.on('location:update', (data: VehicleLocation) => {
-      setVehicles(prev => ({ ...prev, [data.id]: data }));
+    
+    socket.on('location:update', (data: Vehicle) => {
+        const vehicleFeature = vehicles[data.id];
+        const newCoords = fromLonLat([data.longitude, data.latitude]);
+        if (vehicleFeature) {
+          (vehicleFeature.getGeometry() as Point).setCoordinates(newCoords);
+        } else {
+          const feature = new Feature({
+            geometry: new Point(newCoords),
+            name: data.id,
+          });
+          const style = new Style({
+            image: new CircleStyle({
+              radius: 7,
+              fill: new Fill({ color: 'hsl(var(--accent))' }),
+              stroke: new Stroke({ color: '#ffffff', width: 2 }),
+            }),
+            text: new Text({
+              text: data.id,
+              font: '12px Inter, sans-serif',
+              fill: new Fill({ color: 'hsl(var(--foreground))' }),
+              stroke: new Stroke({ color: 'hsl(var(--background))', width: 3 }),
+              offsetY: -20,
+            }),
+          });
+          feature.setStyle(style);
+          vehicleVectorSource.current.addFeature(feature);
+          setVehicles(prev => ({...prev, [data.id]: feature}));
+        }
     });
-    return () => { socket.disconnect() };
-  }, []);
+
+    return () => { 
+        socket.off('connect');
+        socket.off('location:update');
+        socket.disconnect();
+    };
+  }, [vehicles]);
   
   useEffect(() => {
     if (mapRef.current && !mapInstance.current) {
@@ -125,32 +152,6 @@ const LiveMap = () => {
     return () => mapInstance.current?.un('click', handleMapClick);
   }, [handleMapClick]);
   
-  useEffect(() => {
-    vehicleVectorSource.current.clear();
-    Object.values(vehicles).forEach(vehicle => {
-      const feature = new Feature({
-        geometry: new Point(fromLonLat([vehicle.longitude, vehicle.latitude])),
-        name: vehicle.id,
-      });
-      const style = new Style({
-        image: new CircleStyle({
-          radius: 7,
-          fill: new Fill({ color: 'hsl(var(--accent))' }),
-          stroke: new Stroke({ color: '#ffffff', width: 2 }),
-        }),
-        text: new Text({
-          text: vehicle.id,
-          font: '12px Inter, sans-serif',
-          fill: new Fill({ color: 'hsl(var(--foreground))' }),
-          stroke: new Stroke({ color: 'hsl(var(--background))', width: 3 }),
-          offsetY: -20,
-        }),
-      });
-      feature.setStyle(style);
-      vehicleVectorSource.current.addFeature(feature);
-    });
-  }, [vehicles]);
-
   useEffect(() => {
     waypointVectorSource.current.clear();
     waypoints.forEach((coord, index) => {
@@ -175,21 +176,26 @@ const LiveMap = () => {
     });
   }, [waypoints]);
 
-  useEffect(() => {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!searchId || !mapInstance.current) return;
-    const match = Object.values(vehicles).find(v => v.id.toLowerCase().includes(searchId.toLowerCase()));
-    if (match) {
-      const view = mapInstance.current.getView();
-      view.animate({
-        center: fromLonLat([match.longitude, match.latitude]),
+    const feature = vehicles[searchId.toUpperCase()];
+
+    if (feature) {
+      const geometry = feature.getGeometry() as Point;
+      const coords = geometry.getCoordinates();
+      mapInstance.current.getView().animate({
+        center: coords,
         zoom: 16,
         duration: 1000,
       });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Vehicle not found',
+            description: `Could not find vehicle with ID: ${searchId}`
+        })
     }
-  }, [searchId, vehicles]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
   };
 
   return (
@@ -198,7 +204,7 @@ const LiveMap = () => {
         <form onSubmit={handleSearch} className="flex gap-2 items-center bg-background/80 p-2 rounded-lg shadow-md backdrop-blur-sm">
           <Input
             type="text"
-            placeholder="Find Vehicle ID (e.g., TRUCK-001)"
+            placeholder="Find Vehicle ID (e.g., V001)"
             value={searchId}
             onChange={(e) => setSearchId(e.target.value)}
             className="w-60"

@@ -42,6 +42,9 @@ import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { generatePdfReport } from '@/lib/report-generator';
 import { VehicleList } from '@/components/dashboard/vehicle-list';
+import { io, Socket } from 'socket.io-client';
+
+const socket: Socket = io('http://localhost:3001');
 
 const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), {
   ssr: false,
@@ -51,13 +54,32 @@ const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), {
 export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [vehicles, setVehicles] = React.useState<Vehicle[]>(mockVehicles);
-  const [selectedVehicle, setSelectedVehicle] = React.useState<Vehicle | null>(
-    mockVehicles[0]
+  const [vehicles, setVehicles] = React.useState<Record<string, Vehicle>>(() => {
+    const initialVehicles: Record<string, Vehicle> = {};
+    mockVehicles.forEach(v => initialVehicles[v.id] = v);
+    return initialVehicles;
+  });
+  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(
+    mockVehicles[0].id
   );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [optimizationResult, setOptimizationResult] =
     React.useState<OptimizedRouteResult | null>(null);
+
+  React.useEffect(() => {
+    socket.on('connect', () => console.log('Dashboard connected to socket server'));
+    socket.on('location:update', (data: Vehicle) => {
+      setVehicles(prev => ({ ...prev, [data.id]: data }));
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('location:update');
+      socket.disconnect();
+    }
+  }, []);
+  
+  const selectedVehicle = selectedVehicleId ? vehicles[selectedVehicleId] : null;
 
   const handleLogout = () => {
     localStorage.removeItem('user_authenticated');
@@ -108,9 +130,9 @@ export default function DashboardPage() {
         </div>
         <ScrollArea className="flex-1">
           <VehicleList
-            vehicles={vehicles}
-            selectedVehicle={selectedVehicle}
-            onSelectVehicle={setSelectedVehicle}
+            vehicles={Object.values(vehicles)}
+            selectedVehicleId={selectedVehicleId}
+            onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
             isCollapsed={isSidebarCollapsed}
           />
         </ScrollArea>

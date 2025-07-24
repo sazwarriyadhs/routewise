@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import {
   Card,
   CardContent,
@@ -27,7 +28,13 @@ const DetailItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label
   </div>
 );
 
-export function VehicleDetails({ vehicle }: VehicleDetailsProps) {
+export function VehicleDetails({ vehicle: initialVehicle }: VehicleDetailsProps) {
+  const [vehicle, setVehicle] = React.useState<Vehicle | null>(initialVehicle);
+
+  React.useEffect(() => {
+    setVehicle(initialVehicle);
+  }, [initialVehicle]);
+
   if (!vehicle) {
     return (
       <Card>
@@ -70,19 +77,19 @@ export function VehicleDetails({ vehicle }: VehicleDetailsProps) {
         <DetailItem 
           icon={<Gauge className="h-5 w-5" />} 
           label="Current Speed" 
-          value={vehicle.speed} 
+          value={vehicle.speed.toFixed(0)} 
           unit="km/h" 
         />
         <DetailItem 
           icon={<Compass className="h-5 w-5" />} 
           label="Heading" 
-          value={vehicle.heading} 
+          value={vehicle.heading.toFixed(0)} 
           unit="°" 
         />
         <DetailItem 
           icon={<Droplets className="h-5 w-5" />} 
           label="Fuel Consumption" 
-          value={vehicle.fuelConsumption} 
+          value={vehicle.fuelConsumption.toFixed(2)} 
           unit="L/100km" 
         />
         <DetailItem 
