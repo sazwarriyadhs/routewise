@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -32,13 +33,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockVehicles } from '@/lib/mock-data';
 import type { Vehicle, OptimizedRouteResult } from '@/lib/types';
-import Image from 'next/image';
 import { RouteOptimizer } from '@/components/dashboard/route-optimizer';
 import { VehicleDetails } from '@/components/dashboard/vehicle-details';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-full w-full" />,
+});
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -153,14 +159,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                <Image
-                  src="https://placehold.co/1200x800.png"
-                  alt="Map view of vehicle routes"
-                  width={1200}
-                  height={800}
-                  className="h-full w-full object-cover"
-                  data-ai-hint="map city"
-                />
+                <LiveMap vehicle={selectedVehicle} />
               </div>
             </CardContent>
           </div>
