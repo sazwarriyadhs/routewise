@@ -51,7 +51,7 @@ export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExp
             <div className='space-y-4'>
                  <ResultItem 
                     icon={<Route className="h-5 w-5" />}
-                    label="Total Distance"
+                    label="Total Jarak"
                     value={totalDistanceKm.toFixed(2)}
                     unit="km"
                 />
@@ -63,9 +63,9 @@ export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExp
                 />
                 <ResultItem 
                     icon={<Fuel className="h-5 w-5" />}
-                    label="Est. Fuel Usage"
+                    label="Perkiraan BBM"
                     value={estimatedFuelUsage}
-                    unit="liters"
+                    unit="liter"
                 />
             </div>
         ) : (
@@ -80,7 +80,7 @@ export function RouteOptimizer({ onOptimize, isOptimizing, optimizedRoute, onExp
         <Button onClick={onOptimize} disabled={isOptimizing} className="w-full">
           {isOptimizing ? (
              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Optimizing...</>
-          ) : 'Re-calculate Route'}
+          ) : 'Hitung Ulang Rute'}
         </Button>
         <Button onClick={onExport} disabled={!optimizedRoute || isOptimizing} variant="outline" className="w-full">
             <Download className="mr-2 h-4 w-4" />
