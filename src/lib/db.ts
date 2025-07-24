@@ -50,5 +50,3 @@ export const getPool = () => {
             port: Number(PGPORT),
         });
     }
-    return pool;
-}
