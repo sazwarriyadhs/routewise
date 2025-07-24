@@ -31,6 +31,8 @@ import { GPSUploader } from '@/components/dashboard/gps-uploader';
 import type { Coord } from '@/components/dashboard/simulated-vehicle';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 const socket: Socket = io('http://localhost:3001');
 
@@ -47,7 +49,11 @@ export default function DashboardPage() {
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
   const [initialLoadingError, setInitialLoadingError] = React.useState<string | null>(null);
-
+  const [filteredRoutes, setFilteredRoutes] = React.useState<any[]>([]);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
 
   React.useEffect(() => {
     const fetchInitialData = async () => {
@@ -128,6 +134,30 @@ export default function DashboardPage() {
     }
   }, [selectedVehicleId, toast]);
   
+  React.useEffect(() => {
+    const fetchFilteredRoutes = async () => {
+        if (!dateRange?.from || !dateRange?.to) return;
+        try {
+            const fromISO = startOfDay(dateRange.from).toISOString();
+            const toISO = endOfDay(dateRange.to).toISOString();
+            const response = await fetch(`/api/reports/historical?startDate=${fromISO}&endDate=${toISO}`);
+            if(!response.ok) {
+                throw new Error("Failed to fetch filtered routes");
+            }
+            const data = await response.json();
+            setFilteredRoutes(data);
+        } catch(e) {
+            console.error("Error fetching filtered routes", e);
+            toast({
+                title: "Error fetching routes",
+                description: "Could not load filtered route data for the map.",
+                variant: 'destructive'
+            })
+        }
+    };
+    fetchFilteredRoutes();
+  }, [dateRange, toast])
+
   const selectedVehicle = selectedVehicleId ? vehicles[selectedVehicleId] : null;
 
   const handleLogout = () => {
@@ -303,6 +333,7 @@ export default function DashboardPage() {
                 ) : (
                   <VehicleMap 
                     vehicles={Object.values(vehicles)}
+                    routes={filteredRoutes}
                   />
               )}
             </div>
@@ -325,7 +356,7 @@ export default function DashboardPage() {
                         />
                     </TabsContent>
                     <TabsContent value="reports" className="flex-grow overflow-y-auto p-1 space-y-4">
-                        <ReportGenerator />
+                        <ReportGenerator date={dateRange} onDateChange={setDateRange} />
                         <GPSUploader onDataLoaded={handleGpsDataLoaded} />
                     </TabsContent>
                 </Tabs>
@@ -334,5 +365,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

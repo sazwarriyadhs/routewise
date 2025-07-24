@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { format, subDays, startOfDay, endOfDay } from "date-fns"
+import { format, startOfDay, endOfDay } from "date-fns"
 import { Calendar as CalendarIcon, Download, Loader2 } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import jsPDF from 'jspdf'
@@ -19,11 +19,12 @@ import {
 } from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast"
 
-export function ReportGenerator() {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: subDays(new Date(), 7),
-    to: new Date(),
-  })
+interface ReportGeneratorProps {
+    date: DateRange | undefined;
+    onDateChange: (date: DateRange | undefined) => void;
+}
+
+export function ReportGenerator({ date, onDateChange }: ReportGeneratorProps) {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const { toast } = useToast();
 
@@ -95,7 +96,7 @@ export function ReportGenerator() {
     doc.text(`Period: ${format(dateRange.from!, "LLL dd, y")} to ${format(dateRange.to!, "LLL dd, y")}`, 14, 28)
 
     
-    autoTable(doc, {
+    ;(doc as any).autoTable({
         head: [tableColumns],
         body: tableRows,
         startY: 35,
@@ -146,7 +147,7 @@ export function ReportGenerator() {
                         mode="range"
                         defaultMonth={date?.from}
                         selected={date}
-                        onSelect={setDate}
+                        onSelect={onDateChange}
                         numberOfMonths={2}
                     />
                     </PopoverContent>

@@ -19,14 +19,32 @@ interface Vehicle {
   timestamp: string;
 }
 
-export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
+interface RouteLog {
+    vehicle_id: string;
+    latitude: number;
+    longitude: number;
+    timestamp: string;
+}
+
+interface VehicleMapProps {
+    vehicles: Vehicle[];
+    routes: RouteLog[];
+}
+
+
+export default function VehicleMap({ vehicles, routes }: VehicleMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [map, setMap] = useState<Map | null>(null);
   const [showRoutes, setShowRoutes] = useState(true);
-  const [routeLayers, setRouteLayers] = useState<VectorLayer<any>[]>([]);
+  const routeLayersRef = useRef<VectorLayer<any>[]>([]);
+  const vehicleLayerRef = useRef<VectorLayer<any> | null>(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
+
+    const vehicleSource = new VectorSource();
+    const vehicleLayer = new VectorLayer({ source: vehicleSource });
+    vehicleLayerRef.current = vehicleLayer;
 
     const initialMap = new Map({
       target: mapRef.current,
@@ -34,6 +52,7 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
         new TileLayer({
           source: new OSM(),
         }),
+        vehicleLayer,
       ],
       view: new View({
         center: fromLonLat([106.816666, -6.2]),
@@ -42,52 +61,79 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
     });
 
     setMap(initialMap);
-    (window as any).map = initialMap;
 
     return () => {
-        initialMap.setTarget(undefined)
-        delete (window as any).map;
+        initialMap.setTarget(undefined);
     };
   }, []);
 
+  // Effect to update vehicle markers
+  useEffect(() => {
+      if (!map || !vehicleLayerRef.current) return;
+      const source = vehicleLayerRef.current.getSource();
+      if (!source) return;
+
+      source.clear();
+
+      vehicles.forEach(vehicle => {
+          const marker = new Feature({
+              geometry: new Point(fromLonLat([vehicle.longitude, vehicle.latitude]))
+          });
+          marker.setStyle(new Style({
+              image: new Icon({
+                  src: 'https://openlayers.org/en/latest/examples/data/icon.png',
+                  scale: 0.5,
+                  anchor: [0.5, 1],
+              })
+          }));
+          source.addFeature(marker);
+      })
+  }, [vehicles, map])
+
+
+  // Effect to draw/update routes
   useEffect(() => {
     if (!map) return;
     
     // Clear previous route layers
-    routeLayers.forEach((layer) => map.removeLayer(layer));
-    setRouteLayers([]);
+    routeLayersRef.current.forEach((layer) => map.removeLayer(layer));
+    routeLayersRef.current = [];
 
-    if (!showRoutes) {
+    if (!showRoutes || !routes) {
       return;
     }
     
     const newRouteLayers: VectorLayer<any>[] = [];
-
-    const fetchAndAddRoute = async (vehicle: Vehicle, color: string) => {
-      const res = await fetch(`/api/vehicles/logs?vehicle_id=${vehicle.id}`);
-      const logs = await res.json();
-      if (!logs || logs.length < 2) return;
-
-      const coordinates = logs.map((p: any) => fromLonLat([p.longitude, p.latitude]));
-      const line = new LineString(coordinates);
-      const feature = new Feature({ geometry: line });
-      const routeLayer = new VectorLayer({
-        source: new VectorSource({ features: [feature] }),
-        style: new Style({
-          stroke: new Stroke({ color, width: 3 }),
-        }),
-      });
-
-      map.addLayer(routeLayer);
-      newRouteLayers.push(routeLayer);
-    };
-
     const colors = ["#FF0000", "#00AA00", "#0000FF", "#FF00FF", "#FF8800"];
-    vehicles.forEach((v, idx) => fetchAndAddRoute(v, colors[idx % colors.length]));
     
-    setRouteLayers(newRouteLayers);
+    const routesByVehicle = routes.reduce((acc, log) => {
+        if (!acc[log.vehicle_id]) {
+            acc[log.vehicle_id] = [];
+        }
+        acc[log.vehicle_id].push(fromLonLat([log.longitude, log.latitude]));
+        return acc;
+    }, {} as Record<string, number[][]>);
 
-  }, [showRoutes, vehicles, map]);
+
+    Object.keys(routesByVehicle).forEach((vehicleId, index) => {
+        const coordinates = routesByVehicle[vehicleId];
+        if (coordinates.length < 2) return;
+
+        const line = new LineString(coordinates);
+        const feature = new Feature({ geometry: line });
+        const routeLayer = new VectorLayer({
+            source: new VectorSource({ features: [feature] }),
+            style: new Style({
+                stroke: new Stroke({ color: colors[index % colors.length], width: 3 }),
+            }),
+        });
+        map.addLayer(routeLayer);
+        newRouteLayers.push(routeLayer);
+    });
+    
+    routeLayersRef.current = newRouteLayers;
+
+  }, [showRoutes, routes, map]);
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -100,5 +146,3 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
     </div>
   );
 }
-
-    
