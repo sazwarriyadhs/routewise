@@ -15,14 +15,19 @@ export async function POST() {
           timestamp TIMESTAMPTZ DEFAULT NOW()
         );
       `);
-      
-      // Optional: You could also pre-populate with mock data if the table is empty
-      // await client.query(`
-      //   INSERT INTO vehicle_locations (vehicle_id, latitude, longitude, speed) 
-      //   SELECT 'V001', 34.0522, -118.2437, 0 WHERE NOT EXISTS (SELECT 1 FROM vehicle_locations);
-      //   -- Add other vehicles
-      // `);
 
+      // Create the gps_logs table for historical data
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS gps_logs (
+          id SERIAL PRIMARY KEY,
+          vehicle_id VARCHAR(255) NOT NULL,
+          latitude DOUBLE PRECISION NOT NULL,
+          longitude DOUBLE PRECISION NOT NULL,
+          speed INTEGER,
+          timestamp TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+      
       return NextResponse.json({ success: true, message: 'Database schema initialized.' }, { status: 200 });
     } finally {
       client.release();

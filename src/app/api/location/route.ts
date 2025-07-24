@@ -12,19 +12,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // This query will insert a new location or update the existing one for the vehicle_id
-    const query = `
-      INSERT INTO vehicle_locations (vehicle_id, latitude, longitude, speed, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (vehicle_id) 
-      DO UPDATE SET 
-        latitude = EXCLUDED.latitude, 
-        longitude = EXCLUDED.longitude, 
-        speed = EXCLUDED.speed,
-        timestamp = NOW();
-    `;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    await pool.query(query, [vehicle_id, latitude, longitude, speed || 0]);
+      // 1. Insert/Update the current location
+      const upsertQuery = `
+        INSERT INTO vehicle_locations (vehicle_id, latitude, longitude, speed, timestamp)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (vehicle_id) 
+        DO UPDATE SET 
+          latitude = EXCLUDED.latitude, 
+          longitude = EXCLUDED.longitude, 
+          speed = EXCLUDED.speed,
+          timestamp = NOW();
+      `;
+      await client.query(upsertQuery, [vehicle_id, latitude, longitude, speed || 0]);
+
+      // 2. Insert into the historical log
+      const logQuery = `
+        INSERT INTO gps_logs (vehicle_id, latitude, longitude, speed, timestamp)
+        VALUES ($1, $2, $3, $4, NOW());
+      `;
+      await client.query(logQuery, [vehicle_id, latitude, longitude, speed || 0]);
+
+      await client.query('COMMIT');
+    } catch(e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
