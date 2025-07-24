@@ -35,7 +35,7 @@ export default function RootLayout({
         {loading && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background animate-fade-out" style={{animationDelay: '1.5s'}}>
             <div className="animate-pulse-slow">
-              <Icons.Logo className="h-24 w-24" />
+              <Icons.Logo className="h-24 w-auto" />
             </div>
           </div>
         )}

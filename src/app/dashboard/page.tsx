@@ -280,7 +280,7 @@ export default function DashboardPage() {
     <div className="flex h-screen w-full bg-muted/40 flex-col">
        <header className="flex h-16 items-center justify-between gap-4 border-b bg-background px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <Icons.Logo className="h-14 w-14" />
+            <Icons.Logo className="h-10 w-auto" />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -5,8 +5,8 @@ export const Icons = {
     <Image
       src="/image/Logo.png"
       alt="RouteWise logo"
-      width={96}
-      height={96}
+      width={685}
+      height={165}
       className={props.className}
     />
   ),

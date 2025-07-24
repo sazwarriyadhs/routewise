@@ -25,7 +25,7 @@ export default function HomePage() {
       <div className="absolute top-0 left-0 right-0 z-10 flex h-full flex-col items-center justify-center bg-gradient-to-t from-background via-background/80 to-transparent p-8 text-center">
         <div className="flex-grow"></div>
         <div className="mb-12 flex flex-col items-center gap-6 rounded-xl bg-background/80 p-8 shadow-2xl backdrop-blur-sm">
-          <Icons.Logo className="h-20 w-20" />
+          <Icons.Logo className="h-20 w-auto" />
           <h1 className="text-5xl font-bold tracking-tight text-foreground">
             Welcome to RouteWise
           </h1>
