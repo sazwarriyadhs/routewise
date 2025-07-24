@@ -46,6 +46,7 @@ export default function DashboardPage() {
   );
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
+  const [optimizedRoutes, setOptimizedRoutes] = React.useState([]);
 
 
   React.useEffect(() => {
@@ -93,6 +94,7 @@ export default function DashboardPage() {
             startLocation: [activeVehicles[0].longitude, activeVehicles[0].latitude],
         });
         setOptimizedRoute(result);
+        setOptimizedRoutes(result.routes || []);
     } catch(e: any) {
         toast({
             title: "Optimization Failed",
