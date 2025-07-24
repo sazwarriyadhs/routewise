@@ -14,4 +14,5 @@ export type OptimizedRouteResult = {
   optimizedRoute: string;
   estimatedFuelSavings: number;
   reasoning: string;
+  totalDistance?: number; // Optional total distance in km
 };

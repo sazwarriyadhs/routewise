@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
+import { generatePdfReport } from '@/lib/report-generator';
 
 const LiveMap = dynamic(() => import('@/components/dashboard/live-map'), {
   ssr: false,
@@ -64,6 +65,22 @@ export default function DashboardPage() {
       description: 'You have been successfully logged out.',
     });
     router.replace('/');
+  };
+
+  const handleGenerateReport = () => {
+    if (optimizationResult && selectedVehicle) {
+      generatePdfReport(optimizationResult, selectedVehicle);
+      toast({
+        title: 'Report Generated',
+        description: 'The PDF report has been downloaded.',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot Generate Report',
+        description: 'Please optimize a route and select a vehicle first.',
+      });
+    }
   };
 
   return (
@@ -186,6 +203,9 @@ export default function DashboardPage() {
                         <h4 className="font-semibold">Reasoning</h4>
                         <p className="text-muted-foreground">{optimizationResult.reasoning}</p>
                       </div>
+                       <Button onClick={handleGenerateReport} className="w-full mt-4">
+                        Generate PDF Report
+                      </Button>
                     </CardContent>
                   </Card>
                 )}
