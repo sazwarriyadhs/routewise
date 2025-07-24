@@ -28,16 +28,11 @@ const DetailItem = ({ icon, label, value, unit }: { icon: React.ReactNode, label
   </div>
 );
 
-export function VehicleDetails({ vehicle: initialVehicle }: VehicleDetailsProps) {
-  const [vehicle, setVehicle] = React.useState<Vehicle | null>(initialVehicle);
-
-  React.useEffect(() => {
-    setVehicle(initialVehicle);
-  }, [initialVehicle]);
+export function VehicleDetails({ vehicle }: VehicleDetailsProps) {
 
   if (!vehicle) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle>No Vehicle Selected</CardTitle>
           <CardDescription>Please select a vehicle from the list to see its details.</CardDescription>
@@ -61,7 +56,7 @@ export function VehicleDetails({ vehicle: initialVehicle }: VehicleDetailsProps)
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>{vehicle.name}</CardTitle>
         <CardDescription>

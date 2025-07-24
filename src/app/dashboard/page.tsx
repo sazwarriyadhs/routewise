@@ -45,8 +45,8 @@ export default function DashboardPage() {
     mockVehicles.forEach(v => initialVehicles[v.id] = v);
     return initialVehicles;
   });
-  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string>(
-    mockVehicles[0].id
+  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(
+    mockVehicles.length > 0 ? mockVehicles[0].id : null
   );
   const [optimizedRoute, setOptimizedRoute] = React.useState<any | null>(null);
   const [isOptimizing, setIsOptimizing] = React.useState(false);
@@ -209,28 +209,28 @@ export default function DashboardPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex-1 grid grid-cols-12 gap-4 p-4">
-            <div className="col-span-2 h-full">
+        <main className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 p-4 overflow-hidden">
+            <div className="col-span-12 md:col-span-2 h-full">
                  <VehicleList
                     vehicles={Object.values(vehicles)}
                     selectedVehicleId={selectedVehicleId}
                     onSelectVehicle={(vehicle) => setSelectedVehicleId(vehicle.id)}
                 />
             </div>
-            <div className="col-span-7 h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
+            <div className="col-span-12 md:col-span-7 h-full rounded-xl border bg-card text-card-foreground shadow-sm relative overflow-hidden">
                 <VehicleMap vehicle={selectedVehicle} optimizedRoute={optimizedRoute} />
             </div>
-            <div className="col-span-3 h-full">
+            <div className="col-span-12 md:col-span-3 h-full">
                 <Tabs defaultValue="details" className="h-full flex flex-col">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="details">Vehicle Details</TabsTrigger>
                         <TabsTrigger value="optimizer">Route Optimizer</TabsTrigger>
                         <TabsTrigger value="reports">Reports</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="details" className="flex-grow">
+                    <TabsContent value="details" className="flex-grow overflow-y-auto">
                         <VehicleDetails vehicle={selectedVehicle} />
                     </TabsContent>
-                    <TabsContent value="optimizer" className="flex-grow">
+                    <TabsContent value="optimizer" className="flex-grow overflow-y-auto">
                         <RouteOptimizer 
                           onOptimize={handleOptimize}
                           isOptimizing={isOptimizing}
@@ -238,7 +238,7 @@ export default function DashboardPage() {
                           onExport={handleExportPdf}
                         />
                     </TabsContent>
-                    <TabsContent value="reports" className="flex-grow">
+                    <TabsContent value="reports" className="flex-grow overflow-y-auto">
                         <ReportGenerator />
                     </TabsContent>
                 </Tabs>
